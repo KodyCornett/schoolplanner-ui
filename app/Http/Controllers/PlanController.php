@@ -96,45 +96,56 @@ class PlanController extends Controller
                 ->withErrors(['import' => 'Canvas .ics is missing. Please re-import.']);
         }
 
-        $outRel = $run['paths']['out_dir'] ?? "plans/{$runId}/out";
+        $baseRel = "plans/{$runId}";
+        $outRel  = $run['paths']['out_dir'] ?? "{$baseRel}/out";
         Storage::makeDirectory($outRel);
 
-        $jarPath = config('schoolplan.jar_path');
-        if (!file_exists($jarPath)) {
+        $java = config('schoolplan.java_bin');
+        $jar  = config('schoolplan.jar_path');
+
+        if (!file_exists($java)) {
             return redirect()->route('plan.import')
-                ->withErrors(['engine' => "Jar not found at: {$jarPath}"]);
+                ->withErrors(['engine' => "Java not found at: {$java}"]);
+        }
+
+        if (!file_exists($jar)) {
+            return redirect()->route('plan.import')
+                ->withErrors(['engine' => "Jar not found at: {$jar}"]);
         }
 
         $settings = $run['settings'] ?? [];
 
-        // ---- IMPORTANT ----
-        // These override flags must match your Kotlin CLI exactly.
-        // If your CLI uses different names, we’ll swap them quickly once you paste your .bat command.
+        // Write per-run config (we'll match keys to your engine after we inspect the init template)
+        $configRel = "{$baseRel}/local.properties";
+        $props = [
+            "horizon=" . (int)($settings['horizon'] ?? 30),
+            "softCap=" . (int)($settings['soft_cap'] ?? 4),
+            "hardCap=" . (int)($settings['hard_cap'] ?? 5),
+            "skipWeekends=" . (!empty($settings['skip_weekends']) ? "true" : "false"),
+            "busyWeight=" . (float)($settings['busy_weight'] ?? 1),
+        ];
+        Storage::put($configRel, implode(PHP_EOL, $props) . PHP_EOL);
+
         $args = [
-            'java',
+            $java,
             '-jar',
-            $jarPath,
+            $jar,
+            'run',
 
             '--ical', Storage::path($canvasRel),
             '--out', Storage::path($outRel),
-
-            '--horizon', (string)($settings['horizon'] ?? 30),
-            '--softCap', (string)($settings['soft_cap'] ?? 4),
-            '--hardCap', (string)($settings['hard_cap'] ?? 5),
-            '--busyWeight', (string)($settings['busy_weight'] ?? 1),
+            '--config', Storage::path($configRel),
         ];
-
-        if (!empty($settings['skip_weekends'])) {
-            $args[] = '--skipWeekends';
-        }
 
         if ($busyRel && Storage::exists($busyRel)) {
             $args[] = '--busy';
             $args[] = Storage::path($busyRel);
         }
 
-        // Run engine
-        $result = Process::timeout(90)->run($args);
+        // Run with cwd set to the run folder (helps if engine expects project-root-ish behavior)
+        $cwd = Storage::path($baseRel);
+
+        $result = Process::timeout(120)->path($cwd)->run($args);
 
         if (!$result->successful()) {
             return redirect()->route('plan.import')
@@ -150,13 +161,13 @@ class PlanController extends Controller
                 ->withErrors(['engine' => "Engine ran, but outputs were not found. Check: " . Storage::path($outRel)]);
         }
 
-        // Save output paths for preview/download
+        // Save output paths in session for preview/download
         $run['paths']['studyplan_ics'] = $icsRel;
         $run['paths']['plan_events_json'] = $jsonRel;
+        $run['paths']['config'] = $configRel;
         session(['plan.run' => $run]);
 
-        return redirect()->route('plan.preview')
-            ->with('status', 'Generated plan successfully.');
+        return redirect()->route('plan.preview')->with('status', 'Generated plan successfully.');
     }
 
     public function preview()
