@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ImportPlanRequest;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -79,8 +80,83 @@ class PlanController extends Controller
 
     public function generate()
     {
-        // Commit #4: actually run jar here (Process)
-        return redirect()->route('plan.preview')->with('status', 'Generated plan (stub).');
+        $run = session('plan.run');
+
+        if (!$run) {
+            return redirect()->route('plan.import')
+                ->withErrors(['import' => 'No active plan run. Please import a Canvas calendar first.']);
+        }
+
+        $runId = $run['id'];
+        $canvasRel = $run['paths']['canvas'] ?? null;
+        $busyRel   = $run['paths']['busy'] ?? null;
+
+        if (!$canvasRel || !Storage::exists($canvasRel)) {
+            return redirect()->route('plan.import')
+                ->withErrors(['import' => 'Canvas .ics is missing. Please re-import.']);
+        }
+
+        $outRel = $run['paths']['out_dir'] ?? "plans/{$runId}/out";
+        Storage::makeDirectory($outRel);
+
+        $jarPath = config('schoolplan.jar_path');
+        if (!file_exists($jarPath)) {
+            return redirect()->route('plan.import')
+                ->withErrors(['engine' => "Jar not found at: {$jarPath}"]);
+        }
+
+        $settings = $run['settings'] ?? [];
+
+        // ---- IMPORTANT ----
+        // These override flags must match your Kotlin CLI exactly.
+        // If your CLI uses different names, we’ll swap them quickly once you paste your .bat command.
+        $args = [
+            'java',
+            '-jar',
+            $jarPath,
+
+            '--ical', Storage::path($canvasRel),
+            '--out', Storage::path($outRel),
+
+            '--horizon', (string)($settings['horizon'] ?? 30),
+            '--softCap', (string)($settings['soft_cap'] ?? 4),
+            '--hardCap', (string)($settings['hard_cap'] ?? 5),
+            '--busyWeight', (string)($settings['busy_weight'] ?? 1),
+        ];
+
+        if (!empty($settings['skip_weekends'])) {
+            $args[] = '--skipWeekends';
+        }
+
+        if ($busyRel && Storage::exists($busyRel)) {
+            $args[] = '--busy';
+            $args[] = Storage::path($busyRel);
+        }
+
+        // Run engine
+        $result = Process::timeout(90)->run($args);
+
+        if (!$result->successful()) {
+            return redirect()->route('plan.import')
+                ->withErrors(['engine' => "Engine failed:\n" . $result->errorOutput()]);
+        }
+
+        // Expected outputs
+        $icsRel  = $outRel . '/StudyPlan.ics';
+        $jsonRel = $outRel . '/plan_events.json';
+
+        if (!Storage::exists($icsRel) || !Storage::exists($jsonRel)) {
+            return redirect()->route('plan.import')
+                ->withErrors(['engine' => "Engine ran, but outputs were not found. Check: " . Storage::path($outRel)]);
+        }
+
+        // Save output paths for preview/download
+        $run['paths']['studyplan_ics'] = $icsRel;
+        $run['paths']['plan_events_json'] = $jsonRel;
+        session(['plan.run' => $run]);
+
+        return redirect()->route('plan.preview')
+            ->with('status', 'Generated plan successfully.');
     }
 
     public function preview()
