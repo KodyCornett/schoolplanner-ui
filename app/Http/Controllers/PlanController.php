@@ -6,6 +6,7 @@ use App\Http\Requests\ImportPlanRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class PlanController extends Controller
@@ -22,6 +23,7 @@ class PlanController extends Controller
     public function handleImport(ImportPlanRequest $request)
     {
         $runId = session('plan.run.id') ?? (string) Str::uuid();
+        $token = Str::random(40);
         $baseDir = "plans/{$runId}";
         $inputDir = "{$baseDir}/inputs";
 
@@ -47,6 +49,11 @@ class PlanController extends Controller
             Storage::put($canvasPath, $res->body());
         }
 
+        Cache::put("plan_run:{$runId}", [
+            'token' => $token,
+            'canvas' => $canvasPath,
+        ], now()->addHours(2));
+
         // 2) Busy ICS optional upload
         $busyPath = null;
         if ($request->hasFile('busy_ics')) {
@@ -65,6 +72,7 @@ class PlanController extends Controller
         session([
             'plan.run' => [
                 'id' => $runId,
+                'token' => $token,
                 'paths' => [
                     'canvas' => $canvasPath,
                     'busy'   => $busyPath,
@@ -76,6 +84,31 @@ class PlanController extends Controller
 
         return redirect()->route('plan.import')
             ->with('status', "Import saved. Run ID: {$runId}");
+    }
+
+    public function serveCanvasIcs(string $runId)
+    {
+        $t = request()->query('t');
+
+        $run = Cache::get("plan_run:{$runId}");
+        if (!$run) {
+            abort(404);
+        }
+
+        if (!hash_equals($run['token'] ?? '', (string)$t)) {
+            abort(404);
+        }
+
+        $canvasRel = $run['canvas'] ?? null;
+        if (!$canvasRel || !Storage::exists($canvasRel)) {
+            abort(404);
+        }
+
+        return response(Storage::get($canvasRel), 200, [
+            'Content-Type' => 'text/calendar; charset=utf-8',
+            'Content-Disposition' => 'inline; filename="canvas.ics"',
+            'Cache-Control' => 'no-store',
+        ]);
     }
 
     public function generate()
@@ -115,15 +148,22 @@ class PlanController extends Controller
 
         $settings = $run['settings'] ?? [];
 
-        // Write per-run config (we'll match keys to your engine after we inspect the init template)
-        $configRel = "{$baseRel}/local.properties";
+// Use the static file server (separate process) to avoid deadlock with artisan serve
+        $canvasRel = $run['paths']['canvas']; // like: plans/<runId>/inputs/canvas.ics
+        $canvasUrl = "http://127.0.0.1:8001/{$canvasRel}";
+
         $props = [
+            "ICAL_URLS={$canvasUrl}",
             "horizon=" . (int)($settings['horizon'] ?? 30),
             "softCap=" . (int)($settings['soft_cap'] ?? 4),
             "hardCap=" . (int)($settings['hard_cap'] ?? 5),
             "skipWeekends=" . (!empty($settings['skip_weekends']) ? "true" : "false"),
             "busyWeight=" . (float)($settings['busy_weight'] ?? 1),
         ];
+
+
+        // Write per-run config
+        $configRel = "{$baseRel}/local.properties";
         Storage::put($configRel, implode(PHP_EOL, $props) . PHP_EOL);
 
         $args = [
@@ -132,7 +172,6 @@ class PlanController extends Controller
             $jar,
             'run',
 
-            '--ical', Storage::path($canvasRel),
             '--out', Storage::path($outRel),
             '--config', Storage::path($configRel),
         ];
@@ -145,30 +184,80 @@ class PlanController extends Controller
         // Run with cwd set to the run folder (helps if engine expects project-root-ish behavior)
         $cwd = Storage::path($baseRel);
 
-        $result = Process::timeout(120)->path($cwd)->run($args);
+        // On Windows, Java needs SystemRoot to initialize Sockets properly.
+        // Process::run usually inherits environment, but we'll be explicit to be safe.
+        $env = array_merge($_ENV, $_SERVER, [
+            'SystemRoot'  => getenv('SystemRoot') ?: 'C:\\Windows',
+            'SystemDrive' => getenv('SystemDrive') ?: 'C:',
+        ]);
+
+        $result = Process::timeout(120)
+            ->path($cwd)
+            ->env($env)
+            ->run($args);
+
+        if (str_contains($result->output(), 'ERROR:')) {
+            return redirect()->route('plan.import')
+                ->withErrors(['engine' => trim($result->output())]);
+        }
+
+        \Log::info('SchoolPlan engine run', [
+            'args' => $args,
+            'cwd' => $cwd,
+            'exitCode' => $result->exitCode(),
+            'output' => $result->output(),
+            'errorOutput' => $result->errorOutput(),
+        ]);
 
         if (!$result->successful()) {
             return redirect()->route('plan.import')
                 ->withErrors(['engine' => "Engine failed:\n" . $result->errorOutput()]);
         }
 
-        // Expected outputs
+        // Expected outputs (engine may write to /out or default /exports)
         $icsRel  = $outRel . '/StudyPlan.ics';
         $jsonRel = $outRel . '/plan_events.json';
 
-        if (!Storage::exists($icsRel) || !Storage::exists($jsonRel)) {
-            return redirect()->route('plan.import')
-                ->withErrors(['engine' => "Engine ran, but outputs were not found. Check: " . Storage::path($outRel)]);
+        $fallbackDir  = "{$baseRel}/exports";
+        $fallbackJson = "{$fallbackDir}/plan_events.json";
+
+// If the engine names the ICS dynamically, pick the newest .ics in exports
+        if (!Storage::exists($icsRel) && Storage::exists($fallbackDir)) {
+            $files = collect(Storage::files($fallbackDir))
+                ->filter(fn ($f) => str_ends_with(strtolower($f), '.ics'))
+                ->sortByDesc(fn ($f) => Storage::lastModified($f));
+
+            $latest = $files->first();
+            if ($latest) {
+                $icsRel = $latest;
+            }
         }
 
-        // Save output paths in session for preview/download
+// Must have ICS at minimum
+        if (!Storage::exists($icsRel)) {
+            return redirect()->route('plan.import')
+                ->withErrors(['engine' =>
+                    "Engine ran, but no .ics output was found. Check: "
+                    . Storage::path($outRel) . " and " . Storage::path($fallbackDir)
+                ]);
+        }
+
+// JSON is optional for now
+        if (!Storage::exists($jsonRel) && Storage::exists($fallbackJson)) {
+            $jsonRel = $fallbackJson;
+        }
+
         $run['paths']['studyplan_ics'] = $icsRel;
-        $run['paths']['plan_events_json'] = $jsonRel;
+        $run['paths']['plan_events_json'] = Storage::exists($jsonRel) ? $jsonRel : null;
         $run['paths']['config'] = $configRel;
         session(['plan.run' => $run]);
 
-        return redirect()->route('plan.preview')->with('status', 'Generated plan successfully.');
-    }
+        if ($run['paths']['plan_events_json']) {
+            return redirect()->route('plan.preview')->with('status', 'Generated plan successfully.');
+        }
+
+        return redirect()->route('plan.import')->with('status', 'Generated ICS successfully. Preview not available (JSON not generated).');
+    } // <-- closes generate()
 
     public function preview()
     {
@@ -177,6 +266,16 @@ class PlanController extends Controller
 
     public function download()
     {
-        abort(501, 'Not implemented yet.');
-    }
-}
+        $run = session('plan.run');
+        $icsRel = $run['paths']['studyplan_ics'] ?? null;
+
+        if (!$icsRel || !Storage::exists($icsRel)) {
+            return redirect()->route('plan.import')
+                ->withErrors(['download' => 'No generated .ics found. Please Generate first.']);
+        }
+
+        return Storage::download($icsRel, 'StudyPlan.ics', [
+            'Content-Type' => 'text/calendar; charset=utf-8',
+        ]);
+    }}
+

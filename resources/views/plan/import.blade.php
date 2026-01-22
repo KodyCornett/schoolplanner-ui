@@ -23,6 +23,9 @@
                     • Busy: {{ $run['paths']['busy'] }}
                 @endif
             </div>
+            @if(!empty($run['token']))
+                <div class="text-sm text-gray-600">Token: {{ $run['token'] }}</div>
+            @endif
         </div>
     @endif
 
@@ -99,5 +102,15 @@
             Generate Plan (stub)
         </button>
     </form>
+
+    @if(!empty($run['paths']['studyplan_ics']))
+    <div class="mt-4">
+        <a href="{{ route('plan.download') }}"
+           class="inline-block px-4 py-2 rounded bg-black text-white">
+            Download StudyPlan.ics
+        </a>
+    </div>
+    @endif
+
 </div>
 @endsection

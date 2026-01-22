@@ -18,4 +18,11 @@ Route::prefix('plan')->name('plan.')->group(function () {
 
     // Step 4: Download (serves StudyPlan.ics later)
     Route::get('/download', [PlanController::class, 'download'])->name('download');
+
+    Route::get('/run/{runId}/canvas.ics', [PlanController::class, 'serveCanvasIcs'])->name('run.canvas');
+
 });
+
+
+
+
