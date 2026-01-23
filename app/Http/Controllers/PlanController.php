@@ -3,6 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ImportPlanRequest;
+use App\Services\EffortRedistributor;
+use App\Services\IcsGenerator;
+use App\Services\IcsParser;
+use App\Services\PlanEventsBuilder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
@@ -250,18 +255,185 @@ class PlanController extends Controller
         $run['paths']['studyplan_ics'] = $icsRel;
         $run['paths']['plan_events_json'] = Storage::exists($jsonRel) ? $jsonRel : null;
         $run['paths']['config'] = $configRel;
+
+        // Build preview state from ICS files
+        $previewState = $this->buildPreviewState($run);
+        if ($previewState) {
+            $run['preview_state'] = $previewState;
+        }
+
         session(['plan.run' => $run]);
 
-        if ($run['paths']['plan_events_json']) {
+        if ($run['preview_state'] ?? null) {
             return redirect()->route('plan.preview')->with('status', 'Generated plan successfully.');
         }
 
-        return redirect()->route('plan.import')->with('status', 'Generated ICS successfully. Preview not available (JSON not generated).');
+        return redirect()->route('plan.import')->with('status', 'Generated ICS successfully. Preview not available.');
     } // <-- closes generate()
+
+    /**
+     * Build preview state from Canvas and engine ICS files.
+     */
+    private function buildPreviewState(array $run): ?array
+    {
+        $canvasPath = $run['paths']['canvas'] ?? null;
+        $icsPath = $run['paths']['studyplan_ics'] ?? null;
+
+        if (!$canvasPath || !Storage::exists($canvasPath)) {
+            return null;
+        }
+
+        if (!$icsPath || !Storage::exists($icsPath)) {
+            return null;
+        }
+
+        $canvasIcs = Storage::get($canvasPath);
+        $engineIcs = Storage::get($icsPath);
+        $settings = $run['settings'] ?? [];
+
+        $parser = new IcsParser();
+        $builder = new PlanEventsBuilder($parser);
+
+        return $builder->build($canvasIcs, $engineIcs, $settings);
+    }
 
     public function preview()
     {
-        return view('plan.preview', ['run' => session('plan.run')]);
+        $run = session('plan.run');
+
+        if (!$run || !isset($run['preview_state'])) {
+            return redirect()->route('plan.import')
+                ->withErrors(['preview' => 'No preview data available. Please generate a plan first.']);
+        }
+
+        return view('plan.preview', ['run' => $run]);
+    }
+
+    /**
+     * Return preview state as JSON for the interactive UI.
+     */
+    public function previewData(): JsonResponse
+    {
+        $run = session('plan.run');
+
+        if (!$run || !isset($run['preview_state'])) {
+            return response()->json(['error' => 'No preview data available'], 404);
+        }
+
+        return response()->json($run['preview_state']);
+    }
+
+    /**
+     * Update a work block (move/resize).
+     */
+    public function updateBlock(string $blockId): JsonResponse
+    {
+        $run = session('plan.run');
+
+        if (!$run || !isset($run['preview_state'])) {
+            return response()->json(['error' => 'No preview data available'], 404);
+        }
+
+        $updates = request()->validate([
+            'date' => 'sometimes|date_format:Y-m-d',
+            'start_time' => 'sometimes|date_format:H:i',
+            'duration_minutes' => 'sometimes|integer|min:15|max:240',
+        ]);
+
+        $redistributor = new EffortRedistributor();
+        $newState = $redistributor->afterBlockUpdate($run['preview_state'], $blockId, $updates);
+
+        $run['preview_state'] = $newState;
+        session(['plan.run' => $run]);
+
+        return response()->json($newState);
+    }
+
+    /**
+     * Delete a work block and redistribute its effort.
+     */
+    public function deleteBlock(string $blockId): JsonResponse
+    {
+        $run = session('plan.run');
+
+        if (!$run || !isset($run['preview_state'])) {
+            return response()->json(['error' => 'No preview data available'], 404);
+        }
+
+        $redistributor = new EffortRedistributor();
+        $newState = $redistributor->afterBlockDelete($run['preview_state'], $blockId);
+
+        $run['preview_state'] = $newState;
+        session(['plan.run' => $run]);
+
+        return response()->json($newState);
+    }
+
+    /**
+     * Update assignment settings (e.g., allow_work_on_due_date).
+     */
+    public function updateAssignmentSettings(string $assignmentId): JsonResponse
+    {
+        $run = session('plan.run');
+
+        if (!$run || !isset($run['preview_state'])) {
+            return response()->json(['error' => 'No preview data available'], 404);
+        }
+
+        $settings = request()->validate([
+            'allow_work_on_due_date' => 'sometimes|boolean',
+        ]);
+
+        $previewState = $run['preview_state'];
+        $assignments = $previewState['assignments'] ?? [];
+
+        // Find and update the assignment
+        foreach ($assignments as $index => $assignment) {
+            if ($assignment['id'] === $assignmentId) {
+                if (isset($settings['allow_work_on_due_date'])) {
+                    $assignments[$index]['allow_work_on_due_date'] = (bool) $settings['allow_work_on_due_date'];
+                }
+                break;
+            }
+        }
+
+        $previewState['assignments'] = $assignments;
+        $run['preview_state'] = $previewState;
+        session(['plan.run' => $run]);
+
+        return response()->json($previewState);
+    }
+
+    /**
+     * Finalize the preview and generate the downloadable ICS file.
+     */
+    public function finalizeCalendar(): JsonResponse
+    {
+        $run = session('plan.run');
+
+        if (!$run || !isset($run['preview_state'])) {
+            return response()->json(['error' => 'No preview data available'], 404);
+        }
+
+        $generator = new IcsGenerator();
+        $icsContent = $generator->generate($run['preview_state']);
+
+        // Save to storage
+        $runId = $run['id'];
+        $timestamp = now()->format('Ymd_His');
+        $filename = "StudyPlan_{$timestamp}.ics";
+        $path = "plans/{$runId}/exports/{$filename}";
+
+        Storage::put($path, $icsContent);
+
+        // Update session with new ICS path
+        $run['paths']['studyplan_ics'] = $path;
+        session(['plan.run' => $run]);
+
+        return response()->json([
+            'success' => true,
+            'download_url' => route('plan.download'),
+        ]);
     }
 
     public function download()

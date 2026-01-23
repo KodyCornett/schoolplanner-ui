@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "serve": "concurrently --names \"app,files,vite\" \"php artisan serve\" \"cd storage/app/private && php -S 127.0.0.1:8001 router.php\" \"vite\""
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
