@@ -3,7 +3,10 @@
     "allow": [
       "Bash(php artisan:*)",
       "Bash(php -r:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm run build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

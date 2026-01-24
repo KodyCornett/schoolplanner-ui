@@ -87,8 +87,8 @@ class PlanController extends Controller
             ],
         ]);
 
-        return redirect()->route('plan.import')
-            ->with('status', "Import saved. Run ID: {$runId}");
+        // Automatically proceed to generate the plan
+        return $this->generate();
     }
 
     public function serveCanvasIcs(string $runId)
@@ -278,6 +278,7 @@ class PlanController extends Controller
     {
         $canvasPath = $run['paths']['canvas'] ?? null;
         $icsPath = $run['paths']['studyplan_ics'] ?? null;
+        $busyPath = $run['paths']['busy'] ?? null;
 
         if (!$canvasPath || !Storage::exists($canvasPath)) {
             return null;
@@ -291,10 +292,16 @@ class PlanController extends Controller
         $engineIcs = Storage::get($icsPath);
         $settings = $run['settings'] ?? [];
 
+        // Load busy ICS if available
+        $busyIcs = null;
+        if ($busyPath && Storage::exists($busyPath)) {
+            $busyIcs = Storage::get($busyPath);
+        }
+
         $parser = new IcsParser();
         $builder = new PlanEventsBuilder($parser);
 
-        return $builder->build($canvasIcs, $engineIcs, $settings);
+        return $builder->build($canvasIcs, $engineIcs, $settings, $busyIcs);
     }
 
     public function preview()
@@ -398,6 +405,103 @@ class PlanController extends Controller
         }
 
         $previewState['assignments'] = $assignments;
+        $run['preview_state'] = $previewState;
+        session(['plan.run' => $run]);
+
+        return response()->json($previewState);
+    }
+
+    /**
+     * Create a new work block for an assignment.
+     */
+    public function createBlock(string $assignmentId): JsonResponse
+    {
+        $run = session('plan.run');
+
+        if (!$run || !isset($run['preview_state'])) {
+            return response()->json(['error' => 'No preview data available'], 404);
+        }
+
+        $data = request()->validate([
+            'date' => 'required|date_format:Y-m-d',
+            'start_time' => 'required|date_format:H:i',
+            'duration_minutes' => 'sometimes|integer|min:15|max:240',
+        ]);
+
+        $previewState = $run['preview_state'];
+        $assignments = $previewState['assignments'] ?? [];
+        $workBlocks = $previewState['work_blocks'] ?? [];
+
+        // Find the assignment
+        $assignment = collect($assignments)->firstWhere('id', $assignmentId);
+        if (!$assignment) {
+            return response()->json(['error' => 'Assignment not found'], 404);
+        }
+
+        // Generate a new block ID
+        $maxBlockNum = 0;
+        foreach ($workBlocks as $block) {
+            if (preg_match('/^block-(\d+)$/', $block['id'], $m)) {
+                $maxBlockNum = max($maxBlockNum, (int) $m[1]);
+            }
+        }
+        $newBlockId = 'block-' . str_pad($maxBlockNum + 1, 3, '0', STR_PAD_LEFT);
+
+        // Create the new block
+        $durationMinutes = $data['duration_minutes'] ?? 60;
+        $newBlock = [
+            'id' => $newBlockId,
+            'assignment_id' => $assignmentId,
+            'date' => $data['date'],
+            'start_time' => $data['start_time'],
+            'duration_minutes' => $durationMinutes,
+            'label' => '[added]',
+            'is_anchored' => true, // User-created blocks are anchored
+            'original_duration_minutes' => $durationMinutes,
+        ];
+
+        $workBlocks[] = $newBlock;
+        $previewState['work_blocks'] = $workBlocks;
+
+        // Recalculate total effort for the assignment
+        $totalEffort = 0;
+        foreach ($workBlocks as $block) {
+            if ($block['assignment_id'] === $assignmentId) {
+                $totalEffort += $block['duration_minutes'];
+            }
+        }
+
+        foreach ($previewState['assignments'] as $index => $a) {
+            if ($a['id'] === $assignmentId) {
+                $previewState['assignments'][$index]['total_effort_minutes'] = $totalEffort;
+                break;
+            }
+        }
+
+        $run['preview_state'] = $previewState;
+        session(['plan.run' => $run]);
+
+        return response()->json($previewState);
+    }
+
+    /**
+     * Regenerate the preview by re-parsing the ICS files, discarding all edits.
+     */
+    public function regenerate(): JsonResponse
+    {
+        $run = session('plan.run');
+
+        if (!$run) {
+            return response()->json(['error' => 'No active plan run'], 404);
+        }
+
+        // Re-build preview state from original ICS files
+        $previewState = $this->buildPreviewState($run);
+
+        if (!$previewState) {
+            return response()->json(['error' => 'Could not regenerate preview'], 500);
+        }
+
         $run['preview_state'] = $previewState;
         session(['plan.run' => $run]);
 

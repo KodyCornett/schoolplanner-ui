@@ -24,9 +24,10 @@ class PlanEventsBuilder
      * @param string $canvasIcs Canvas calendar ICS content
      * @param string $engineIcs Engine-generated work blocks ICS content
      * @param array $settings User settings from session
+     * @param string|null $busyIcs Optional busy time ICS content
      * @return array Preview state structure
      */
-    public function build(string $canvasIcs, string $engineIcs, array $settings = []): array
+    public function build(string $canvasIcs, string $engineIcs, array $settings = [], ?string $busyIcs = null): array
     {
         // Parse both ICS files
         $canvasAssignments = $this->parser->parseCanvasCalendar($canvasIcs);
@@ -41,6 +42,12 @@ class PlanEventsBuilder
         // Calculate total effort per assignment
         $assignments = $this->calculateTotalEffort($assignments, $workBlocks);
 
+        // Parse busy times if provided
+        $busyTimes = [];
+        if ($busyIcs) {
+            $busyTimes = $this->buildBusyTimes($busyIcs);
+        }
+
         return [
             'generated_at' => now()->toIso8601String(),
             'settings' => [
@@ -53,7 +60,7 @@ class PlanEventsBuilder
             ],
             'assignments' => array_values($assignments),
             'work_blocks' => $workBlocks,
-            'busy_times' => [], // TODO: Parse from busy ICS if provided
+            'busy_times' => $busyTimes,
         ];
     }
 
@@ -158,5 +165,49 @@ class PlanEventsBuilder
     private function normalizeTitle(string $title): string
     {
         return strtolower(trim(preg_replace('/\s+/', ' ', $title)));
+    }
+
+    /**
+     * Build busy times array from busy ICS content.
+     */
+    private function buildBusyTimes(string $busyIcs): array
+    {
+        $events = $this->parser->parse($busyIcs);
+        $busyTimes = [];
+
+        foreach ($events as $event) {
+            $summary = $event['summary'] ?? 'Busy';
+            $date = $event['dtstart'] ?? '';
+            $dtend = $event['dtend'] ?? '';
+
+            // Extract time from dtstart/dtend if available
+            $startTime = null;
+            $endTime = null;
+
+            // Check if the original event has time info (not all-day)
+            if (isset($event['dtstart_raw']) && strlen($event['dtstart_raw']) > 8) {
+                // Has time component
+                if (preg_match('/T(\d{2})(\d{2})/', $event['dtstart_raw'] ?? '', $m)) {
+                    $startTime = $m[1] . ':' . $m[2];
+                }
+                if (preg_match('/T(\d{2})(\d{2})/', $event['dtend_raw'] ?? '', $m)) {
+                    $endTime = $m[1] . ':' . $m[2];
+                }
+            }
+
+            if (!$date) {
+                continue;
+            }
+
+            $busyTimes[] = [
+                'id' => 'busy-' . Str::random(6),
+                'title' => $summary,
+                'date' => $date,
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+            ];
+        }
+
+        return $busyTimes;
     }
 }

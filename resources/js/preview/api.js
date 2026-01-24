@@ -68,6 +68,21 @@ export async function updateAssignmentSettings(assignmentId, settings) {
     return response.json();
 }
 
+export async function createBlock(assignmentId, data) {
+    const response = await fetch(`/plan/preview/assignment/${assignmentId}/block`, {
+        method: 'POST',
+        headers,
+        credentials: 'same-origin',
+        body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to create block: ${response.status}`);
+    }
+
+    return response.json();
+}
+
 export async function regenerate() {
     const response = await fetch('/plan/preview/regenerate', {
         method: 'POST',

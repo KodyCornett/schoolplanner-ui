@@ -165,6 +165,8 @@ class IcsParser
 
             // Parse date values
             if (in_array($key, ['dtstart', 'dtend', 'dtstamp'])) {
+                // Store raw value for time extraction
+                $normalized[$key . '_raw'] = $value;
                 $value = $this->parseDate($value, $data['params']);
             }
 

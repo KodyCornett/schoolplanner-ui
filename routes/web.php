@@ -19,7 +19,9 @@ Route::prefix('plan')->name('plan.')->group(function () {
     Route::post('/preview/block/{blockId}', [PlanController::class, 'updateBlock'])->name('preview.block.update');
     Route::delete('/preview/block/{blockId}', [PlanController::class, 'deleteBlock'])->name('preview.block.delete');
     Route::post('/preview/assignment/{assignmentId}/settings', [PlanController::class, 'updateAssignmentSettings'])->name('preview.assignment.settings');
+    Route::post('/preview/assignment/{assignmentId}/block', [PlanController::class, 'createBlock'])->name('preview.assignment.block.create');
     Route::post('/preview/finalize', [PlanController::class, 'finalizeCalendar'])->name('preview.finalize');
+    Route::post('/preview/regenerate', [PlanController::class, 'regenerate'])->name('preview.regenerate');
 
     // Step 4: Download (serves StudyPlan.ics later)
     Route::get('/download', [PlanController::class, 'download'])->name('download');
