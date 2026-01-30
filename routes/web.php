@@ -9,6 +9,8 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
+Route::get('/help', fn () => view('help.index'))->name('help');
+
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
