@@ -12,7 +12,7 @@ class EffortRedistributorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->redistributor = new EffortRedistributor();
+        $this->redistributor = new EffortRedistributor;
     }
 
     private function createPreviewState(array $assignments, array $workBlocks): array

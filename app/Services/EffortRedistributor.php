@@ -5,6 +5,7 @@ namespace App\Services;
 class EffortRedistributor
 {
     private const MIN_BLOCK_DURATION = 15;
+
     private const MAX_BLOCK_DURATION = 240;
 
     /**
@@ -13,9 +14,9 @@ class EffortRedistributor
      * When a block is edited, it becomes "anchored" and its duration is fixed.
      * The remaining effort for the assignment is redistributed across non-anchored blocks.
      *
-     * @param array $previewState Current preview state
-     * @param string $updatedBlockId The block that was updated
-     * @param array $updates The updates applied to the block (date, start_time, duration_minutes)
+     * @param  array  $previewState  Current preview state
+     * @param  string  $updatedBlockId  The block that was updated
+     * @param  array  $updates  The updates applied to the block (date, start_time, duration_minutes)
      * @return array Updated preview state
      */
     public function afterBlockUpdate(array $previewState, string $updatedBlockId, array $updates): array
@@ -45,7 +46,7 @@ class EffortRedistributor
             }
         }
 
-        if (!$updatedBlock) {
+        if (! $updatedBlock) {
             return $previewState;
         }
 
@@ -66,8 +67,8 @@ class EffortRedistributor
      * The deleted block's effort is distributed across remaining non-anchored blocks
      * for the same assignment.
      *
-     * @param array $previewState Current preview state
-     * @param string $deletedBlockId The block to delete
+     * @param  array  $previewState  Current preview state
+     * @param  string  $deletedBlockId  The block to delete
      * @return array Updated preview state
      */
     public function afterBlockDelete(array $previewState, string $deletedBlockId): array
@@ -98,7 +99,7 @@ class EffortRedistributor
         // Find non-anchored blocks for the same assignment
         $flexibleBlocks = [];
         foreach ($blocks as $index => $block) {
-            if ($block['assignment_id'] === $assignmentId && !$block['is_anchored']) {
+            if ($block['assignment_id'] === $assignmentId && ! $block['is_anchored']) {
                 $flexibleBlocks[] = $index;
             }
         }
@@ -135,7 +136,7 @@ class EffortRedistributor
      */
     private function redistributeForAssignment(array $blocks, ?string $assignmentId): array
     {
-        if (!$assignmentId) {
+        if (! $assignmentId) {
             return $blocks;
         }
 

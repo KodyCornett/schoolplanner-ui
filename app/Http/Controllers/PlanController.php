@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ImportPlanRequest;
+use App\Jobs\CleanupOldPlanRuns;
+use App\Models\PlanRun;
 use App\Services\EffortRedistributor;
 use App\Services\IcsGenerator;
 use App\Services\IcsParser;
@@ -11,14 +13,14 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class PlanController extends Controller
 {
     public function showImport()
     {
-        $run = session('plan.run');
+        $user = auth()->user();
+        $run = $user->planRuns()->first();
 
         return view('plan.import', [
             'run' => $run,
@@ -27,9 +29,11 @@ class PlanController extends Controller
 
     public function handleImport(ImportPlanRequest $request)
     {
-        $runId = session('plan.run.id') ?? (string) Str::uuid();
+        $user = auth()->user();
+        $userId = $user->id;
+        $runId = (string) Str::uuid();
         $token = Str::random(40);
-        $baseDir = "plans/{$runId}";
+        $baseDir = "plans/{$userId}/{$runId}";
         $inputDir = "{$baseDir}/inputs";
 
         Storage::makeDirectory($inputDir);
@@ -44,7 +48,7 @@ class PlanController extends Controller
             $url = $request->input('canvas_url');
             $res = Http::timeout(15)->get($url);
 
-            if (!$res->successful()) {
+            if (! $res->successful()) {
                 return back()
                     ->withErrors(['canvas_url' => 'Could not fetch the Canvas .ics from the provided URL.'])
                     ->withInput();
@@ -54,11 +58,6 @@ class PlanController extends Controller
             Storage::put($canvasPath, $res->body());
         }
 
-        Cache::put("plan_run:{$runId}", [
-            'token' => $token,
-            'canvas' => $canvasPath,
-        ], now()->addHours(2));
-
         // 2) Busy ICS optional upload
         $busyPath = null;
         if ($request->hasFile('busy_ics')) {
@@ -67,45 +66,51 @@ class PlanController extends Controller
 
         // 3) Settings (store normalized)
         $settings = [
-            'horizon'       => (int) ($request->input('horizon', 30)),
-            'soft_cap'      => (int) ($request->input('soft_cap', 4)),
-            'hard_cap'      => (int) ($request->input('hard_cap', 5)),
+            'horizon' => (int) ($request->input('horizon', 30)),
+            'soft_cap' => (int) ($request->input('soft_cap', 4)),
+            'hard_cap' => (int) ($request->input('hard_cap', 5)),
             'skip_weekends' => (bool) ($request->boolean('skip_weekends')),
-            'busy_weight'   => (float) ($request->input('busy_weight', 1)),
+            'busy_weight' => (float) ($request->input('busy_weight', 1)),
         ];
 
-        session([
-            'plan.run' => [
-                'id' => $runId,
-                'token' => $token,
-                'paths' => [
-                    'canvas' => $canvasPath,
-                    'busy'   => $busyPath,
-                    'out_dir'=> $baseDir . '/out',
-                ],
-                'settings' => $settings,
+        // Create PlanRun record
+        $run = PlanRun::create([
+            'id' => $runId,
+            'user_id' => $userId,
+            'token' => $token,
+            'paths' => [
+                'canvas' => $canvasPath,
+                'busy' => $busyPath,
+                'out_dir' => $baseDir.'/out',
             ],
+            'settings' => $settings,
         ]);
 
+        // Store current run ID in session for convenience
+        session(['current_plan_run_id' => $runId]);
+
+        // Cleanup old runs (keep last 3)
+        CleanupOldPlanRuns::dispatch($userId)->delay(now()->addMinutes(1));
+
         // Automatically proceed to generate the plan
-        return $this->generate();
+        return $this->generateForRun($run);
     }
 
     public function serveCanvasIcs(string $runId)
     {
         $t = request()->query('t');
 
-        $run = Cache::get("plan_run:{$runId}");
-        if (!$run) {
+        $run = PlanRun::find($runId);
+        if (! $run) {
             abort(404);
         }
 
-        if (!hash_equals($run['token'] ?? '', (string)$t)) {
-            abort(404);
+        if (! hash_equals($run->token ?? '', (string) $t)) {
+            abort(403);
         }
 
-        $canvasRel = $run['canvas'] ?? null;
-        if (!$canvasRel || !Storage::exists($canvasRel)) {
+        $canvasRel = $run->paths['canvas'] ?? null;
+        if (! $canvasRel || ! Storage::exists($canvasRel)) {
             abort(404);
         }
 
@@ -118,65 +123,75 @@ class PlanController extends Controller
 
     public function generate()
     {
-        $run = session('plan.run');
+        $runId = session('current_plan_run_id');
+        $run = $runId ? PlanRun::where('user_id', auth()->id())->find($runId) : null;
 
-        if (!$run) {
+        if (! $run) {
+            // Try latest run
+            $run = auth()->user()->planRuns()->first();
+        }
+
+        if (! $run) {
             return redirect()->route('plan.import')
                 ->withErrors(['import' => 'No active plan run. Please import a Canvas calendar first.']);
         }
 
-        $runId = $run['id'];
-        $canvasRel = $run['paths']['canvas'] ?? null;
-        $busyRel   = $run['paths']['busy'] ?? null;
+        return $this->generateForRun($run);
+    }
 
-        if (!$canvasRel || !Storage::exists($canvasRel)) {
+    private function generateForRun(PlanRun $run)
+    {
+        $runId = $run->id;
+        $userId = $run->user_id;
+        $paths = $run->paths;
+        $canvasRel = $paths['canvas'] ?? null;
+        $busyRel = $paths['busy'] ?? null;
+
+        if (! $canvasRel || ! Storage::exists($canvasRel)) {
             return redirect()->route('plan.import')
                 ->withErrors(['import' => 'Canvas .ics is missing. Please re-import.']);
         }
 
-        $baseRel = "plans/{$runId}";
-        $outRel  = $run['paths']['out_dir'] ?? "{$baseRel}/out";
+        $baseRel = "plans/{$userId}/{$runId}";
+        $outRel = $paths['out_dir'] ?? "{$baseRel}/out";
         Storage::makeDirectory($outRel);
 
         $java = config('schoolplan.java_bin');
-        $jar  = config('schoolplan.jar_path');
+        $jar = config('schoolplan.jar_path');
 
-        if (!file_exists($java)) {
+        if (! file_exists($java)) {
             return redirect()->route('plan.import')
                 ->withErrors(['engine' => "Java not found at: {$java}"]);
         }
 
-        if (!file_exists($jar)) {
+        if (! file_exists($jar)) {
             return redirect()->route('plan.import')
                 ->withErrors(['engine' => "Jar not found at: {$jar}"]);
         }
 
-        $settings = $run['settings'] ?? [];
+        $settings = $run->settings ?? [];
 
-// Use the static file server (separate process) to avoid deadlock with artisan serve
-        $canvasRel = $run['paths']['canvas']; // like: plans/<runId>/inputs/canvas.ics
+        // Use the static file server (separate process) to avoid deadlock with artisan serve
         $canvasUrl = "http://127.0.0.1:8001/{$canvasRel}";
 
         $props = [
             "ICAL_URLS={$canvasUrl}",
-            "horizon=" . (int)($settings['horizon'] ?? 30),
-            "softCap=" . (int)($settings['soft_cap'] ?? 4),
-            "hardCap=" . (int)($settings['hard_cap'] ?? 5),
-            "skipWeekends=" . (!empty($settings['skip_weekends']) ? "true" : "false"),
-            "busyWeight=" . (float)($settings['busy_weight'] ?? 1),
+            'horizon='.(int) ($settings['horizon'] ?? 30),
+            'softCap='.(int) ($settings['soft_cap'] ?? 4),
+            'hardCap='.(int) ($settings['hard_cap'] ?? 5),
+            'skipWeekends='.(! empty($settings['skip_weekends']) ? 'true' : 'false'),
+            'busyWeight='.(float) ($settings['busy_weight'] ?? 1),
         ];
-
 
         // Write per-run config
         $configRel = "{$baseRel}/local.properties";
-        Storage::put($configRel, implode(PHP_EOL, $props) . PHP_EOL);
+        Storage::put($configRel, implode(PHP_EOL, $props).PHP_EOL);
 
         $args = [
             $java,
             '-jar',
             $jar,
             'run',
-
             '--out', Storage::path($outRel),
             '--config', Storage::path($configRel),
         ];
@@ -186,13 +201,12 @@ class PlanController extends Controller
             $args[] = Storage::path($busyRel);
         }
 
-        // Run with cwd set to the run folder (helps if engine expects project-root-ish behavior)
+        // Run with cwd set to the run folder
         $cwd = Storage::path($baseRel);
 
         // On Windows, Java needs SystemRoot to initialize Sockets properly.
-        // Process::run usually inherits environment, but we'll be explicit to be safe.
         $env = array_merge($_ENV, $_SERVER, [
-            'SystemRoot'  => getenv('SystemRoot') ?: 'C:\\Windows',
+            'SystemRoot' => getenv('SystemRoot') ?: 'C:\\Windows',
             'SystemDrive' => getenv('SystemDrive') ?: 'C:',
         ]);
 
@@ -214,20 +228,20 @@ class PlanController extends Controller
             'errorOutput' => $result->errorOutput(),
         ]);
 
-        if (!$result->successful()) {
+        if (! $result->successful()) {
             return redirect()->route('plan.import')
-                ->withErrors(['engine' => "Engine failed:\n" . $result->errorOutput()]);
+                ->withErrors(['engine' => "Engine failed:\n".$result->errorOutput()]);
         }
 
         // Expected outputs (engine may write to /out or default /exports)
-        $icsRel  = $outRel . '/StudyPlan.ics';
-        $jsonRel = $outRel . '/plan_events.json';
+        $icsRel = $outRel.'/StudyPlan.ics';
+        $jsonRel = $outRel.'/plan_events.json';
 
-        $fallbackDir  = "{$baseRel}/exports";
+        $fallbackDir = "{$baseRel}/exports";
         $fallbackJson = "{$fallbackDir}/plan_events.json";
 
-// If the engine names the ICS dynamically, pick the newest .ics in exports
-        if (!Storage::exists($icsRel) && Storage::exists($fallbackDir)) {
+        // If the engine names the ICS dynamically, pick the newest .ics in exports
+        if (! Storage::exists($icsRel) && Storage::exists($fallbackDir)) {
             $files = collect(Storage::files($fallbackDir))
                 ->filter(fn ($f) => str_ends_with(strtolower($f), '.ics'))
                 ->sortByDesc(fn ($f) => Storage::lastModified($f));
@@ -238,59 +252,60 @@ class PlanController extends Controller
             }
         }
 
-// Must have ICS at minimum
-        if (!Storage::exists($icsRel)) {
+        // Must have ICS at minimum
+        if (! Storage::exists($icsRel)) {
             return redirect()->route('plan.import')
-                ->withErrors(['engine' =>
-                    "Engine ran, but no .ics output was found. Check: "
-                    . Storage::path($outRel) . " and " . Storage::path($fallbackDir)
+                ->withErrors(['engine' => 'Engine ran, but no .ics output was found. Check: '
+                    .Storage::path($outRel).' and '.Storage::path($fallbackDir),
                 ]);
         }
 
-// JSON is optional for now
-        if (!Storage::exists($jsonRel) && Storage::exists($fallbackJson)) {
+        // JSON is optional for now
+        if (! Storage::exists($jsonRel) && Storage::exists($fallbackJson)) {
             $jsonRel = $fallbackJson;
         }
 
-        $run['paths']['studyplan_ics'] = $icsRel;
-        $run['paths']['plan_events_json'] = Storage::exists($jsonRel) ? $jsonRel : null;
-        $run['paths']['config'] = $configRel;
+        $paths['studyplan_ics'] = $icsRel;
+        $paths['plan_events_json'] = Storage::exists($jsonRel) ? $jsonRel : null;
+        $paths['config'] = $configRel;
+
+        $run->paths = $paths;
 
         // Build preview state from ICS files
         $previewState = $this->buildPreviewState($run);
         if ($previewState) {
-            $run['preview_state'] = $previewState;
+            $run->preview_state = $previewState;
         }
 
-        session(['plan.run' => $run]);
+        $run->save();
 
-        if ($run['preview_state'] ?? null) {
+        session(['current_plan_run_id' => $run->id]);
+
+        if ($run->preview_state) {
             return redirect()->route('plan.preview')->with('status', 'Generated plan successfully.');
         }
 
         return redirect()->route('plan.import')->with('status', 'Generated ICS successfully. Preview not available.');
-    } // <-- closes generate()
+    }
 
-    /**
-     * Build preview state from Canvas and engine ICS files.
-     */
-    private function buildPreviewState(array $run): ?array
+    private function buildPreviewState(PlanRun $run): ?array
     {
-        $canvasPath = $run['paths']['canvas'] ?? null;
-        $icsPath = $run['paths']['studyplan_ics'] ?? null;
-        $busyPath = $run['paths']['busy'] ?? null;
+        $paths = $run->paths;
+        $canvasPath = $paths['canvas'] ?? null;
+        $icsPath = $paths['studyplan_ics'] ?? null;
+        $busyPath = $paths['busy'] ?? null;
 
-        if (!$canvasPath || !Storage::exists($canvasPath)) {
+        if (! $canvasPath || ! Storage::exists($canvasPath)) {
             return null;
         }
 
-        if (!$icsPath || !Storage::exists($icsPath)) {
+        if (! $icsPath || ! Storage::exists($icsPath)) {
             return null;
         }
 
         $canvasIcs = Storage::get($canvasPath);
         $engineIcs = Storage::get($icsPath);
-        $settings = $run['settings'] ?? [];
+        $settings = $run->settings ?? [];
 
         // Load busy ICS if available
         $busyIcs = null;
@@ -298,7 +313,7 @@ class PlanController extends Controller
             $busyIcs = Storage::get($busyPath);
         }
 
-        $parser = new IcsParser();
+        $parser = new IcsParser;
         $builder = new PlanEventsBuilder($parser);
 
         return $builder->build($canvasIcs, $engineIcs, $settings, $busyIcs);
@@ -306,9 +321,9 @@ class PlanController extends Controller
 
     public function preview()
     {
-        $run = session('plan.run');
+        $run = $this->getCurrentRun();
 
-        if (!$run || !isset($run['preview_state'])) {
+        if (! $run || ! $run->preview_state) {
             return redirect()->route('plan.import')
                 ->withErrors(['preview' => 'No preview data available. Please generate a plan first.']);
         }
@@ -316,28 +331,22 @@ class PlanController extends Controller
         return view('plan.preview', ['run' => $run]);
     }
 
-    /**
-     * Return preview state as JSON for the interactive UI.
-     */
     public function previewData(): JsonResponse
     {
-        $run = session('plan.run');
+        $run = $this->getCurrentRun();
 
-        if (!$run || !isset($run['preview_state'])) {
+        if (! $run || ! $run->preview_state) {
             return response()->json(['error' => 'No preview data available'], 404);
         }
 
-        return response()->json($run['preview_state']);
+        return response()->json($run->preview_state);
     }
 
-    /**
-     * Update a work block (move/resize).
-     */
     public function updateBlock(string $blockId): JsonResponse
     {
-        $run = session('plan.run');
+        $run = $this->getCurrentRun();
 
-        if (!$run || !isset($run['preview_state'])) {
+        if (! $run || ! $run->preview_state) {
             return response()->json(['error' => 'No preview data available'], 404);
         }
 
@@ -347,43 +356,37 @@ class PlanController extends Controller
             'duration_minutes' => 'sometimes|integer|min:15|max:240',
         ]);
 
-        $redistributor = new EffortRedistributor();
-        $newState = $redistributor->afterBlockUpdate($run['preview_state'], $blockId, $updates);
+        $redistributor = new EffortRedistributor;
+        $newState = $redistributor->afterBlockUpdate($run->preview_state, $blockId, $updates);
 
-        $run['preview_state'] = $newState;
-        session(['plan.run' => $run]);
+        $run->preview_state = $newState;
+        $run->save();
 
         return response()->json($newState);
     }
 
-    /**
-     * Delete a work block and redistribute its effort.
-     */
     public function deleteBlock(string $blockId): JsonResponse
     {
-        $run = session('plan.run');
+        $run = $this->getCurrentRun();
 
-        if (!$run || !isset($run['preview_state'])) {
+        if (! $run || ! $run->preview_state) {
             return response()->json(['error' => 'No preview data available'], 404);
         }
 
-        $redistributor = new EffortRedistributor();
-        $newState = $redistributor->afterBlockDelete($run['preview_state'], $blockId);
+        $redistributor = new EffortRedistributor;
+        $newState = $redistributor->afterBlockDelete($run->preview_state, $blockId);
 
-        $run['preview_state'] = $newState;
-        session(['plan.run' => $run]);
+        $run->preview_state = $newState;
+        $run->save();
 
         return response()->json($newState);
     }
 
-    /**
-     * Update assignment settings (e.g., allow_work_on_due_date).
-     */
     public function updateAssignmentSettings(string $assignmentId): JsonResponse
     {
-        $run = session('plan.run');
+        $run = $this->getCurrentRun();
 
-        if (!$run || !isset($run['preview_state'])) {
+        if (! $run || ! $run->preview_state) {
             return response()->json(['error' => 'No preview data available'], 404);
         }
 
@@ -391,7 +394,7 @@ class PlanController extends Controller
             'allow_work_on_due_date' => 'sometimes|boolean',
         ]);
 
-        $previewState = $run['preview_state'];
+        $previewState = $run->preview_state;
         $assignments = $previewState['assignments'] ?? [];
 
         // Find and update the assignment
@@ -405,20 +408,17 @@ class PlanController extends Controller
         }
 
         $previewState['assignments'] = $assignments;
-        $run['preview_state'] = $previewState;
-        session(['plan.run' => $run]);
+        $run->preview_state = $previewState;
+        $run->save();
 
         return response()->json($previewState);
     }
 
-    /**
-     * Create a new work block for an assignment.
-     */
     public function createBlock(string $assignmentId): JsonResponse
     {
-        $run = session('plan.run');
+        $run = $this->getCurrentRun();
 
-        if (!$run || !isset($run['preview_state'])) {
+        if (! $run || ! $run->preview_state) {
             return response()->json(['error' => 'No preview data available'], 404);
         }
 
@@ -428,13 +428,13 @@ class PlanController extends Controller
             'duration_minutes' => 'sometimes|integer|min:15|max:240',
         ]);
 
-        $previewState = $run['preview_state'];
+        $previewState = $run->preview_state;
         $assignments = $previewState['assignments'] ?? [];
         $workBlocks = $previewState['work_blocks'] ?? [];
 
         // Find the assignment
         $assignment = collect($assignments)->firstWhere('id', $assignmentId);
-        if (!$assignment) {
+        if (! $assignment) {
             return response()->json(['error' => 'Assignment not found'], 404);
         }
 
@@ -445,7 +445,7 @@ class PlanController extends Controller
                 $maxBlockNum = max($maxBlockNum, (int) $m[1]);
             }
         }
-        $newBlockId = 'block-' . str_pad($maxBlockNum + 1, 3, '0', STR_PAD_LEFT);
+        $newBlockId = 'block-'.str_pad($maxBlockNum + 1, 3, '0', STR_PAD_LEFT);
 
         // Create the new block
         $durationMinutes = $data['duration_minutes'] ?? 60;
@@ -456,7 +456,7 @@ class PlanController extends Controller
             'start_time' => $data['start_time'],
             'duration_minutes' => $durationMinutes,
             'label' => '[added]',
-            'is_anchored' => true, // User-created blocks are anchored
+            'is_anchored' => true,
             'original_duration_minutes' => $durationMinutes,
         ];
 
@@ -478,61 +478,58 @@ class PlanController extends Controller
             }
         }
 
-        $run['preview_state'] = $previewState;
-        session(['plan.run' => $run]);
+        $run->preview_state = $previewState;
+        $run->save();
 
         return response()->json($previewState);
     }
 
-    /**
-     * Regenerate the preview by re-parsing the ICS files, discarding all edits.
-     */
     public function regenerate(): JsonResponse
     {
-        $run = session('plan.run');
+        $run = $this->getCurrentRun();
 
-        if (!$run) {
+        if (! $run) {
             return response()->json(['error' => 'No active plan run'], 404);
         }
 
         // Re-build preview state from original ICS files
         $previewState = $this->buildPreviewState($run);
 
-        if (!$previewState) {
+        if (! $previewState) {
             return response()->json(['error' => 'Could not regenerate preview'], 500);
         }
 
-        $run['preview_state'] = $previewState;
-        session(['plan.run' => $run]);
+        $run->preview_state = $previewState;
+        $run->save();
 
         return response()->json($previewState);
     }
 
-    /**
-     * Finalize the preview and generate the downloadable ICS file.
-     */
     public function finalizeCalendar(): JsonResponse
     {
-        $run = session('plan.run');
+        $run = $this->getCurrentRun();
 
-        if (!$run || !isset($run['preview_state'])) {
+        if (! $run || ! $run->preview_state) {
             return response()->json(['error' => 'No preview data available'], 404);
         }
 
-        $generator = new IcsGenerator();
-        $icsContent = $generator->generate($run['preview_state']);
+        $generator = new IcsGenerator;
+        $icsContent = $generator->generate($run->preview_state);
 
         // Save to storage
-        $runId = $run['id'];
+        $userId = $run->user_id;
+        $runId = $run->id;
         $timestamp = now()->format('Ymd_His');
         $filename = "StudyPlan_{$timestamp}.ics";
-        $path = "plans/{$runId}/exports/{$filename}";
+        $path = "plans/{$userId}/{$runId}/exports/{$filename}";
 
         Storage::put($path, $icsContent);
 
-        // Update session with new ICS path
-        $run['paths']['studyplan_ics'] = $path;
-        session(['plan.run' => $run]);
+        // Update model with new ICS path
+        $paths = $run->paths;
+        $paths['studyplan_ics'] = $path;
+        $run->paths = $paths;
+        $run->save();
 
         return response()->json([
             'success' => true,
@@ -542,10 +539,16 @@ class PlanController extends Controller
 
     public function download()
     {
-        $run = session('plan.run');
-        $icsRel = $run['paths']['studyplan_ics'] ?? null;
+        $run = $this->getCurrentRun();
 
-        if (!$icsRel || !Storage::exists($icsRel)) {
+        if (! $run) {
+            return redirect()->route('plan.import')
+                ->withErrors(['download' => 'No plan run found.']);
+        }
+
+        $icsRel = $run->paths['studyplan_ics'] ?? null;
+
+        if (! $icsRel || ! Storage::exists($icsRel)) {
             return redirect()->route('plan.import')
                 ->withErrors(['download' => 'No generated .ics found. Please Generate first.']);
         }
@@ -553,5 +556,20 @@ class PlanController extends Controller
         return Storage::download($icsRel, 'StudyPlan.ics', [
             'Content-Type' => 'text/calendar; charset=utf-8',
         ]);
-    }}
+    }
 
+    private function getCurrentRun(): ?PlanRun
+    {
+        $runId = session('current_plan_run_id');
+
+        if ($runId) {
+            $run = PlanRun::where('user_id', auth()->id())->find($runId);
+            if ($run) {
+                return $run;
+            }
+        }
+
+        // Fallback to latest run
+        return auth()->user()->planRuns()->first();
+    }
+}

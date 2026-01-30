@@ -9,8 +9,11 @@ class PlanEventsBuilder
     private IcsParser $parser;
 
     private const DEFAULT_BLOCK_DURATION = 60; // minutes
+
     private const DEFAULT_START_TIME = '09:00';
+
     private const MIN_BLOCK_DURATION = 15;
+
     private const MAX_BLOCK_DURATION = 240;
 
     public function __construct(IcsParser $parser)
@@ -21,10 +24,10 @@ class PlanEventsBuilder
     /**
      * Build preview state from Canvas ICS and engine output ICS.
      *
-     * @param string $canvasIcs Canvas calendar ICS content
-     * @param string $engineIcs Engine-generated work blocks ICS content
-     * @param array $settings User settings from session
-     * @param string|null $busyIcs Optional busy time ICS content
+     * @param  string  $canvasIcs  Canvas calendar ICS content
+     * @param  string  $engineIcs  Engine-generated work blocks ICS content
+     * @param  array  $settings  User settings from session
+     * @param  string|null  $busyIcs  Optional busy time ICS content
      * @return array Preview state structure
      */
     public function build(string $canvasIcs, string $engineIcs, array $settings = [], ?string $busyIcs = null): array
@@ -74,7 +77,7 @@ class PlanEventsBuilder
         // First, create assignments from Canvas data
         foreach ($canvasAssignments as $assignment) {
             $key = $this->normalizeTitle($assignment['title']);
-            $id = 'assignment-' . Str::random(8);
+            $id = 'assignment-'.Str::random(8);
 
             $assignments[$key] = [
                 'id' => $id,
@@ -92,8 +95,8 @@ class PlanEventsBuilder
         foreach ($engineBlocks as $block) {
             $key = $this->normalizeTitle($block['assignment_title']);
 
-            if (!isset($assignments[$key])) {
-                $id = 'assignment-' . Str::random(8);
+            if (! isset($assignments[$key])) {
+                $id = 'assignment-'.Str::random(8);
                 $assignments[$key] = [
                     'id' => $id,
                     'title' => $block['assignment_title'],
@@ -123,7 +126,7 @@ class PlanEventsBuilder
             $assignmentId = $assignments[$titleKey]['id'] ?? null;
 
             $workBlocks[] = [
-                'id' => 'block-' . str_pad(++$blockIndex, 3, '0', STR_PAD_LEFT),
+                'id' => 'block-'.str_pad(++$blockIndex, 3, '0', STR_PAD_LEFT),
                 'assignment_id' => $assignmentId,
                 'date' => $block['date'],
                 'start_time' => self::DEFAULT_START_TIME,
@@ -188,19 +191,19 @@ class PlanEventsBuilder
             if (isset($event['dtstart_raw']) && strlen($event['dtstart_raw']) > 8) {
                 // Has time component
                 if (preg_match('/T(\d{2})(\d{2})/', $event['dtstart_raw'] ?? '', $m)) {
-                    $startTime = $m[1] . ':' . $m[2];
+                    $startTime = $m[1].':'.$m[2];
                 }
                 if (preg_match('/T(\d{2})(\d{2})/', $event['dtend_raw'] ?? '', $m)) {
-                    $endTime = $m[1] . ':' . $m[2];
+                    $endTime = $m[1].':'.$m[2];
                 }
             }
 
-            if (!$date) {
+            if (! $date) {
                 continue;
             }
 
             $busyTimes[] = [
-                'id' => 'busy-' . Str::random(6),
+                'id' => 'busy-'.Str::random(6),
                 'title' => $summary,
                 'date' => $date,
                 'start_time' => $startTime,

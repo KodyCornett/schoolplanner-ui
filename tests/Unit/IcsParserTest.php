@@ -12,12 +12,12 @@ class IcsParserTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->parser = new IcsParser();
+        $this->parser = new IcsParser;
     }
 
     public function test_parses_valid_ics_with_single_event(): void
     {
-        $ics = <<<ICS
+        $ics = <<<'ICS'
 BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Test//Test//EN
@@ -42,7 +42,7 @@ ICS;
 
     public function test_parses_multiple_events(): void
     {
-        $ics = <<<ICS
+        $ics = <<<'ICS'
 BEGIN:VCALENDAR
 VERSION:2.0
 BEGIN:VEVENT
@@ -73,7 +73,7 @@ ICS;
 
     public function test_parses_datetime_with_time(): void
     {
-        $ics = <<<ICS
+        $ics = <<<'ICS'
 BEGIN:VCALENDAR
 BEGIN:VEVENT
 UID:datetime-test
@@ -93,7 +93,7 @@ ICS;
 
     public function test_parses_date_with_value_parameter(): void
     {
-        $ics = <<<ICS
+        $ics = <<<'ICS'
 BEGIN:VCALENDAR
 BEGIN:VEVENT
 UID:date-value-test
@@ -113,13 +113,13 @@ ICS;
     {
         // Note: In ICS files, \n is used to represent newlines
         // We need to use actual backslash-n in the test string
-        $ics = "BEGIN:VCALENDAR\r\n" .
-               "BEGIN:VEVENT\r\n" .
-               "UID:escape-test\r\n" .
-               "DTSTART:20260125\r\n" .
-               "SUMMARY:Test with\\, comma and\\; semicolon\r\n" .
-               "DESCRIPTION:Line 1\\nLine 2\\nLine 3\r\n" .
-               "END:VEVENT\r\n" .
+        $ics = "BEGIN:VCALENDAR\r\n".
+               "BEGIN:VEVENT\r\n".
+               "UID:escape-test\r\n".
+               "DTSTART:20260125\r\n".
+               "SUMMARY:Test with\\, comma and\\; semicolon\r\n".
+               "DESCRIPTION:Line 1\\nLine 2\\nLine 3\r\n".
+               "END:VEVENT\r\n".
                "END:VCALENDAR\r\n";
 
         $events = $this->parser->parse($ics);
@@ -131,13 +131,13 @@ ICS;
 
     public function test_handles_folded_lines(): void
     {
-        $ics = "BEGIN:VCALENDAR\r\n" .
-               "BEGIN:VEVENT\r\n" .
-               "UID:fold-test\r\n" .
-               "DTSTART:20260125\r\n" .
-               "SUMMARY:This is a very long summary that has been folded across\r\n" .
-               " multiple lines according to RFC 5545 rules\r\n" .
-               "END:VEVENT\r\n" .
+        $ics = "BEGIN:VCALENDAR\r\n".
+               "BEGIN:VEVENT\r\n".
+               "UID:fold-test\r\n".
+               "DTSTART:20260125\r\n".
+               "SUMMARY:This is a very long summary that has been folded across\r\n".
+               " multiple lines according to RFC 5545 rules\r\n".
+               "END:VEVENT\r\n".
                "END:VCALENDAR\r\n";
 
         $events = $this->parser->parse($ics);
@@ -156,7 +156,7 @@ ICS;
 
     public function test_returns_empty_array_for_ics_without_events(): void
     {
-        $ics = <<<ICS
+        $ics = <<<'ICS'
 BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Test//Test//EN
@@ -170,7 +170,7 @@ ICS;
 
     public function test_parse_canvas_calendar_extracts_assignments(): void
     {
-        $ics = <<<ICS
+        $ics = <<<'ICS'
 BEGIN:VCALENDAR
 VERSION:2.0
 BEGIN:VEVENT
@@ -194,7 +194,7 @@ ICS;
 
     public function test_parse_engine_output_extracts_work_blocks(): void
     {
-        $ics = <<<ICS
+        $ics = <<<'ICS'
 BEGIN:VCALENDAR
 VERSION:2.0
 BEGIN:VEVENT
@@ -225,7 +225,7 @@ ICS;
 
     public function test_parse_engine_output_handles_missing_label(): void
     {
-        $ics = <<<ICS
+        $ics = <<<'ICS'
 BEGIN:VCALENDAR
 BEGIN:VEVENT
 UID:no-label
@@ -245,7 +245,7 @@ ICS;
 
     public function test_parse_engine_output_handles_missing_course(): void
     {
-        $ics = <<<ICS
+        $ics = <<<'ICS'
 BEGIN:VCALENDAR
 BEGIN:VEVENT
 UID:no-course

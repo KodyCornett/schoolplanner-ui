@@ -7,7 +7,7 @@ class IcsParser
     /**
      * Parse an ICS file and return an array of events.
      *
-     * @param string $icsContent Raw ICS file content
+     * @param  string  $icsContent  Raw ICS file content
      * @return array Array of parsed events
      */
     public function parse(string $icsContent): array
@@ -27,14 +27,16 @@ class IcsParser
             if ($line === 'BEGIN:VEVENT') {
                 $inEvent = true;
                 $currentEvent = [];
+
                 continue;
             }
 
             if ($line === 'END:VEVENT') {
                 $inEvent = false;
-                if (!empty($currentEvent)) {
+                if (! empty($currentEvent)) {
                     $events[] = $this->normalizeEvent($currentEvent);
                 }
+
                 continue;
             }
 
@@ -67,7 +69,7 @@ class IcsParser
     /**
      * Parse engine output ICS and extract work blocks.
      *
-     * @param string $icsContent Engine-generated ICS content
+     * @param  string  $icsContent  Engine-generated ICS content
      * @return array Array of work block data
      */
     public function parseEngineOutput(string $icsContent): array
@@ -99,7 +101,7 @@ class IcsParser
     /**
      * Parse Canvas ICS and extract assignments.
      *
-     * @param string $icsContent Canvas calendar ICS content
+     * @param  string  $icsContent  Canvas calendar ICS content
      * @return array Array of assignment data
      */
     public function parseCanvasCalendar(string $icsContent): array
@@ -149,6 +151,7 @@ class IcsParser
         $value = str_replace('\\,', ',', $value);
         $value = str_replace('\\;', ';', $value);
         $value = str_replace('\\\\', '\\', $value);
+
         return $value;
     }
 
@@ -166,7 +169,7 @@ class IcsParser
             // Parse date values
             if (in_array($key, ['dtstart', 'dtend', 'dtstamp'])) {
                 // Store raw value for time extraction
-                $normalized[$key . '_raw'] = $value;
+                $normalized[$key.'_raw'] = $value;
                 $value = $this->parseDate($value, $data['params']);
             }
 
@@ -207,7 +210,7 @@ class IcsParser
 
         // Extract [phase label] from start
         if (preg_match('/^\[([^\]]+)\]\s*/', $summary, $m)) {
-            $label = '[' . $m[1] . ']';
+            $label = '['.$m[1].']';
             $summary = substr($summary, strlen($m[0]));
         }
 

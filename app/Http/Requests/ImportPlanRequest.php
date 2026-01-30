@@ -19,14 +19,14 @@ class ImportPlanRequest extends FormRequest
             'canvas_url' => ['nullable', 'url', 'required_without:canvas_ics'],
 
             // Busy optional (upload for MVP)
-            'busy_ics'   => ['nullable', 'file', 'mimes:ics,txt', 'max:5120'],
+            'busy_ics' => ['nullable', 'file', 'mimes:ics,txt', 'max:5120'],
 
             // Settings (safe defaults later)
-            'horizon'       => ['nullable', 'integer', 'min:1', 'max:365'],
-            'soft_cap'      => ['nullable', 'integer', 'min:1', 'max:24'],
-            'hard_cap'      => ['nullable', 'integer', 'min:1', 'max:24'],
+            'horizon' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'soft_cap' => ['nullable', 'integer', 'min:1', 'max:24'],
+            'hard_cap' => ['nullable', 'integer', 'min:1', 'max:24'],
             'skip_weekends' => ['nullable', 'boolean'],
-            'busy_weight'   => ['nullable', 'numeric', 'min:0', 'max:10'],
+            'busy_weight' => ['nullable', 'numeric', 'min:0', 'max:10'],
         ];
     }
 }

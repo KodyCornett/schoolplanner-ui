@@ -7,7 +7,7 @@ class IcsGenerator
     /**
      * Generate an ICS file from the preview state.
      *
-     * @param array $previewState The current preview state with assignments and work_blocks
+     * @param  array  $previewState  The current preview state with assignments and work_blocks
      * @return string ICS file content
      */
     public function generate(array $previewState): string
@@ -40,7 +40,7 @@ class IcsGenerator
         // Calendar footer
         $lines[] = 'END:VCALENDAR';
 
-        return implode("\r\n", $lines) . "\r\n";
+        return implode("\r\n", $lines)."\r\n";
     }
 
     /**
@@ -53,41 +53,41 @@ class IcsGenerator
         $lines[] = 'BEGIN:VEVENT';
 
         // UID - unique identifier
-        $uid = 'studyplan-' . $block['date'] . '-' . $index . '@schoolplanner';
-        $lines[] = 'UID:' . $uid;
+        $uid = 'studyplan-'.$block['date'].'-'.$index.'@schoolplanner';
+        $lines[] = 'UID:'.$uid;
 
         // Timestamp
         $dtstamp = gmdate('Ymd\THis\Z');
-        $lines[] = 'DTSTAMP:' . $dtstamp;
+        $lines[] = 'DTSTAMP:'.$dtstamp;
 
         // Date and time
         $date = str_replace('-', '', $block['date']);
-        $startTime = str_replace(':', '', $block['start_time']) . '00';
+        $startTime = str_replace(':', '', $block['start_time']).'00';
         $endTime = $this->calculateEndTime($block['start_time'], $block['duration_minutes']);
 
-        $lines[] = 'DTSTART:' . $date . 'T' . $startTime;
-        $lines[] = 'DTEND:' . $date . 'T' . $endTime;
+        $lines[] = 'DTSTART:'.$date.'T'.$startTime;
+        $lines[] = 'DTEND:'.$date.'T'.$endTime;
 
         // Summary: [phase label] Assignment Title [Course]
         $summary = $block['label'] ?? '';
         if ($assignment) {
-            $summary .= ' ' . $assignment['title'];
-            if (!empty($assignment['course'])) {
-                $summary .= ' [' . $assignment['course'] . ']';
+            $summary .= ' '.$assignment['title'];
+            if (! empty($assignment['course'])) {
+                $summary .= ' ['.$assignment['course'].']';
             }
         }
-        $lines[] = 'SUMMARY:' . $this->escapeIcsValue(trim($summary));
+        $lines[] = 'SUMMARY:'.$this->escapeIcsValue(trim($summary));
 
         // Description
         $description = 'Scheduled study block';
-        if ($assignment && !empty($assignment['description'])) {
-            $description .= "\n\n" . $assignment['description'];
+        if ($assignment && ! empty($assignment['description'])) {
+            $description .= "\n\n".$assignment['description'];
         }
-        $lines[] = 'DESCRIPTION:' . $this->escapeIcsValue($description);
+        $lines[] = 'DESCRIPTION:'.$this->escapeIcsValue($description);
 
         // Categories
-        if ($assignment && !empty($assignment['course'])) {
-            $lines[] = 'CATEGORIES:' . $this->escapeIcsValue($assignment['course']);
+        if ($assignment && ! empty($assignment['course'])) {
+            $lines[] = 'CATEGORIES:'.$this->escapeIcsValue($assignment['course']);
         }
 
         $lines[] = 'END:VEVENT';

@@ -1,35 +1,40 @@
 <?php
 
 use App\Http\Controllers\PlanController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => redirect()->route('plan.import'));
-
-Route::prefix('plan')->name('plan.')->group(function () {
-    // Step 1: Import UI
-    Route::get('/import', [PlanController::class, 'showImport'])->name('import');
-    Route::post('/import', [PlanController::class, 'handleImport'])->name('import.handle');
-
-    // Step 2: Generate (runs jar later)
-    Route::post('/generate', [PlanController::class, 'generate'])->name('generate');
-
-    // Step 3: Preview agenda
-    Route::get('/preview', [PlanController::class, 'preview'])->name('preview');
-    Route::get('/preview/data', [PlanController::class, 'previewData'])->name('preview.data');
-    Route::post('/preview/block/{blockId}', [PlanController::class, 'updateBlock'])->name('preview.block.update');
-    Route::delete('/preview/block/{blockId}', [PlanController::class, 'deleteBlock'])->name('preview.block.delete');
-    Route::post('/preview/assignment/{assignmentId}/settings', [PlanController::class, 'updateAssignmentSettings'])->name('preview.assignment.settings');
-    Route::post('/preview/assignment/{assignmentId}/block', [PlanController::class, 'createBlock'])->name('preview.assignment.block.create');
-    Route::post('/preview/finalize', [PlanController::class, 'finalizeCalendar'])->name('preview.finalize');
-    Route::post('/preview/regenerate', [PlanController::class, 'regenerate'])->name('preview.regenerate');
-
-    // Step 4: Download (serves StudyPlan.ics later)
-    Route::get('/download', [PlanController::class, 'download'])->name('download');
-
-    Route::get('/run/{runId}/canvas.ics', [PlanController::class, 'serveCanvasIcs'])->name('run.canvas');
-
+Route::get('/', function () {
+    return redirect()->route('plan.import');
 });
 
+Route::get('/dashboard', function () {
+    return redirect()->route('plan.import');
+})->middleware(['auth', 'verified'])->name('dashboard');
 
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
 
+// Plan routes - require authentication
+Route::prefix('plan')->name('plan.')->middleware('auth')->group(function () {
+    Route::get('/import', [PlanController::class, 'showImport'])->name('import');
+    Route::post('/import', [PlanController::class, 'handleImport'])->name('import.handle');
+    Route::get('/generate', [PlanController::class, 'generate'])->name('generate');
+    Route::get('/preview', [PlanController::class, 'preview'])->name('preview');
+    Route::get('/preview/data', [PlanController::class, 'previewData'])->name('preview.data');
+    Route::put('/preview/blocks/{blockId}', [PlanController::class, 'updateBlock'])->name('preview.blocks.update');
+    Route::delete('/preview/blocks/{blockId}', [PlanController::class, 'deleteBlock'])->name('preview.blocks.delete');
+    Route::post('/preview/assignments/{assignmentId}/blocks', [PlanController::class, 'createBlock'])->name('preview.blocks.create');
+    Route::put('/preview/assignments/{assignmentId}/settings', [PlanController::class, 'updateAssignmentSettings'])->name('preview.assignments.settings');
+    Route::post('/preview/regenerate', [PlanController::class, 'regenerate'])->name('preview.regenerate');
+    Route::post('/preview/finalize', [PlanController::class, 'finalizeCalendar'])->name('preview.finalize');
+    Route::get('/download', [PlanController::class, 'download'])->name('download');
+});
 
+// Canvas ICS serving endpoint - no auth (uses token validation)
+Route::get('/plan/canvas/{runId}', [PlanController::class, 'serveCanvasIcs'])->name('plan.canvas');
+
+require __DIR__.'/auth.php';
