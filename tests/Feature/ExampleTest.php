@@ -10,11 +10,27 @@ class ExampleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_the_application_redirects_to_import(): void
+    public function test_the_application_redirects_to_dashboard(): void
     {
         $response = $this->get('/');
 
-        $response->assertRedirect('/plan/import');
+        $response->assertRedirect('/dashboard');
+    }
+
+    public function test_the_dashboard_requires_authentication(): void
+    {
+        $response = $this->get('/dashboard');
+
+        $response->assertRedirect('/login');
+    }
+
+    public function test_the_dashboard_returns_successful_response_when_authenticated(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/dashboard');
+
+        $response->assertStatus(200);
     }
 
     public function test_the_import_page_requires_authentication(): void

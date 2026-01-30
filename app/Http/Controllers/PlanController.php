@@ -123,6 +123,17 @@ class PlanController extends Controller
 
     public function generate()
     {
+        // Check for run ID in query string first
+        $queryRunId = request()->query('run');
+        if ($queryRunId) {
+            $run = PlanRun::where('user_id', auth()->id())->find($queryRunId);
+            if ($run) {
+                session(['current_plan_run_id' => $run->id]);
+
+                return $this->generateForRun($run);
+            }
+        }
+
         $runId = session('current_plan_run_id');
         $run = $runId ? PlanRun::where('user_id', auth()->id())->find($runId) : null;
 
@@ -560,8 +571,19 @@ class PlanController extends Controller
 
     private function getCurrentRun(): ?PlanRun
     {
-        $runId = session('current_plan_run_id');
+        // Check for run ID in query string first (from dashboard links)
+        $queryRunId = request()->query('run');
+        if ($queryRunId) {
+            $run = PlanRun::where('user_id', auth()->id())->find($queryRunId);
+            if ($run) {
+                session(['current_plan_run_id' => $run->id]);
 
+                return $run;
+            }
+        }
+
+        // Then check session
+        $runId = session('current_plan_run_id');
         if ($runId) {
             $run = PlanRun::where('user_id', auth()->id())->find($runId);
             if ($run) {
