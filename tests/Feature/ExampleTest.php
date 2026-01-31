@@ -10,9 +10,20 @@ class ExampleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_the_application_redirects_to_dashboard(): void
+    public function test_guest_sees_landing_page(): void
     {
         $response = $this->get('/');
+
+        $response->assertStatus(200);
+        $response->assertSee('SchoolPlanner');
+        $response->assertSee('Get Started');
+    }
+
+    public function test_authenticated_user_redirects_to_dashboard(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/');
 
         $response->assertRedirect('/dashboard');
     }

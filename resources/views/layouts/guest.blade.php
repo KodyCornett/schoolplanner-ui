@@ -33,6 +33,14 @@
                     Need help? Learn how SchoolPlanner works
                 </a>
             </div>
+
+            <div class="mt-8 flex flex-wrap justify-center gap-4 text-sm text-blue-200">
+                <a href="{{ route('terms') }}" class="hover:text-white transition">Terms</a>
+                <span class="text-blue-400">|</span>
+                <a href="{{ route('privacy') }}" class="hover:text-white transition">Privacy</a>
+                <span class="text-blue-400">|</span>
+                <a href="{{ route('contact') }}" class="hover:text-white transition">Contact</a>
+            </div>
         </div>
     </body>
 </html>
