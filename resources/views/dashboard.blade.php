@@ -72,6 +72,11 @@
                                                 <p class="text-sm text-gray-500">
                                                     Created {{ $run->created_at->diffForHumans() }}
                                                 </p>
+                                                @if($run->date_range)
+                                                    <p class="text-sm text-gray-500">
+                                                        {{ \Carbon\Carbon::parse($run->date_range['start'])->format('M j') }} - {{ \Carbon\Carbon::parse($run->date_range['end'])->format('M j, Y') }}
+                                                    </p>
+                                                @endif
                                             </div>
                                         </div>
 

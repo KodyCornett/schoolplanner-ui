@@ -36,4 +36,21 @@ class PlanRun extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function getDateRangeAttribute(): ?array
+    {
+        $workBlocks = $this->preview_state['work_blocks'] ?? [];
+
+        if (empty($workBlocks)) {
+            return null;
+        }
+
+        $dates = array_column($workBlocks, 'date');
+        sort($dates);
+
+        return [
+            'start' => $dates[0],
+            'end' => $dates[count($dates) - 1],
+        ];
+    }
 }

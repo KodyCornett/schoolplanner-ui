@@ -116,6 +116,10 @@ class PreviewCalendar {
         return (this.data?.assignments || []).find(a => a.id === assignmentId);
     }
 
+    getBlock(blockId) {
+        return (this.data?.work_blocks || []).find(b => b.id === blockId);
+    }
+
     showLoading() {
         this.container.innerHTML = `
             <div class="flex items-center justify-center h-64">
@@ -141,6 +145,33 @@ class PreviewCalendar {
         if (overlay) {
             overlay.classList.toggle('hidden', !loading);
         }
+    }
+
+    showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        const bgColor = type === 'error' ? 'bg-red-600' : 'bg-green-600';
+        const icon = type === 'error' ? '✕' : '✓';
+
+        toast.className = `${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-72 max-w-sm animate-slide-in`;
+        toast.innerHTML = `
+            <span class="text-lg">${icon}</span>
+            <span class="flex-1">${message}</span>
+            <button class="toast-close text-white/80 hover:text-white text-xl leading-none">&times;</button>
+        `;
+
+        container.appendChild(toast);
+
+        // Auto-dismiss after 4 seconds
+        const timeoutId = setTimeout(() => toast.remove(), 4000);
+
+        // Manual close
+        toast.querySelector('.toast-close').addEventListener('click', () => {
+            clearTimeout(timeoutId);
+            toast.remove();
+        });
     }
 
     render() {
@@ -170,6 +201,18 @@ class PreviewCalendar {
         const colCount = displayDates.length;
 
         this.container.innerHTML = `
+            <!-- Toast Container -->
+            <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+            <!-- Toast Animation Styles -->
+            <style>
+                @keyframes slide-in {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                .animate-slide-in { animation: slide-in 0.2s ease-out; }
+            </style>
+
             <!-- Loading Overlay -->
             <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-75 z-40 hidden items-center justify-center">
                 <div class="flex flex-col items-center gap-3">
@@ -178,9 +221,9 @@ class PreviewCalendar {
                 </div>
             </div>
 
-            <div class="flex flex-col lg:flex-row gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <!-- Main Calendar Area -->
-                <div class="flex-1 min-w-0">
+                <div class="lg:col-span-8">
                     <!-- Navigation Bar -->
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
                         <div class="flex items-center gap-2">
@@ -226,8 +269,10 @@ class PreviewCalendar {
                 </div>
 
                 <!-- Assignment Sidebar -->
-                <div class="lg:w-80 flex-shrink-0">
-                    ${this.renderAssignmentPanel()}
+                <div class="lg:col-span-4">
+                    <div class="lg:sticky lg:top-6">
+                        ${this.renderAssignmentPanel()}
+                    </div>
                 </div>
             </div>
 
@@ -283,7 +328,8 @@ class PreviewCalendar {
         const hasContent = dueDates.length > 0 || busyTimes.length > 0 || blocks.length > 0;
 
         return `
-            <div class="border rounded ${isToday ? 'border-blue-500 border-2 shadow-sm' : ''} ${isWeekend ? 'bg-gray-50' : ''}">
+            <div class="day-column border rounded ${isToday ? 'border-blue-500 border-2 shadow-sm' : ''} ${isWeekend ? 'bg-gray-50' : ''}"
+                 data-date="${dateStr}">
                 <div class="p-2 border-b ${isToday ? 'bg-blue-50' : 'bg-gray-100'} text-center">
                     <div class="font-medium text-sm">${date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
                     <div class="text-xs text-gray-600">${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
@@ -307,7 +353,8 @@ class PreviewCalendar {
 
         return `
             <div class="block-card ${padding} rounded border cursor-pointer hover:shadow transition-shadow ${colors.bg} ${colors.border}"
-                 data-block-id="${block.id}">
+                 data-block-id="${block.id}"
+                 draggable="true">
                 <div class="${textSize} font-medium ${colors.text} truncate">
                     ${assignment?.title || 'Unknown'}${anchoredIcon}
                 </div>
@@ -350,7 +397,7 @@ class PreviewCalendar {
                     <h3 class="font-semibold text-lg">Assignments</h3>
                     <p class="text-sm text-gray-500 mt-1">Click + to add a work block</p>
                 </div>
-                <div class="divide-y max-h-96 overflow-y-auto">
+                <div class="divide-y max-h-96 lg:max-h-[calc(100vh-200px)] overflow-y-auto">
                     ${assignments.map(assignment => {
                         const colors = this.assignmentColors.get(assignment.id) || COLORS[0];
                         const blockCount = workBlocks.filter(b => b.assignment_id === assignment.id).length;
@@ -568,6 +615,58 @@ class PreviewCalendar {
             });
         });
 
+        // Drag and drop for moving blocks between days
+        this.container.addEventListener('dragstart', (e) => {
+            if (e.target.classList.contains('block-card')) {
+                e.dataTransfer.setData('text/plain', e.target.dataset.blockId);
+                e.dataTransfer.effectAllowed = 'move';
+                e.target.classList.add('opacity-50');
+            }
+        });
+
+        this.container.addEventListener('dragend', (e) => {
+            if (e.target.classList.contains('block-card')) {
+                e.target.classList.remove('opacity-50');
+            }
+        });
+
+        this.container.addEventListener('dragover', (e) => {
+            const dayColumn = e.target.closest('[data-date]');
+            if (dayColumn) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            }
+        });
+
+        this.container.addEventListener('dragenter', (e) => {
+            const dayColumn = e.target.closest('[data-date]');
+            if (dayColumn) {
+                dayColumn.classList.add('bg-blue-50');
+            }
+        });
+
+        this.container.addEventListener('dragleave', (e) => {
+            const dayColumn = e.target.closest('[data-date]');
+            if (dayColumn && !dayColumn.contains(e.relatedTarget)) {
+                dayColumn.classList.remove('bg-blue-50');
+            }
+        });
+
+        this.container.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            const dayColumn = e.target.closest('[data-date]');
+            if (!dayColumn) return;
+
+            dayColumn.classList.remove('bg-blue-50');
+            const blockId = e.dataTransfer.getData('text/plain');
+            const newDate = dayColumn.dataset.date;
+            const block = this.getBlock(blockId);
+
+            if (block && block.date !== newDate) {
+                await this.moveBlockToDate(blockId, newDate);
+            }
+        });
+
         // Modal controls
         document.getElementById('cancel-edit-btn')?.addEventListener('click', () => this.closeBlockEditor());
         document.getElementById('block-editor-form')?.addEventListener('submit', (e) => this.handleBlockSave(e));
@@ -683,6 +782,27 @@ class PreviewCalendar {
         this.selectedAssignmentForNewBlock = null;
     }
 
+    async moveBlockToDate(blockId, newDate) {
+        const block = this.getBlock(blockId);
+        if (!block) return;
+
+        this.setLoadingState(true);
+        try {
+            this.data = await updateBlock(blockId, {
+                date: newDate,
+                start_time: block.start_time,
+                duration_minutes: block.duration_minutes,
+            });
+            this.render();
+            this.showToast('Block moved');
+        } catch (error) {
+            console.error('Failed to move block:', error);
+            this.showToast('Failed to move block. Please try again.', 'error');
+        } finally {
+            this.setLoadingState(false);
+        }
+    }
+
     async handleCreateBlock(e) {
         e.preventDefault();
 
@@ -698,8 +818,9 @@ class PreviewCalendar {
             this.data = await createBlock(assignmentId, data);
             this.closeCreateBlockModal();
             this.render();
+            this.showToast('Block created');
         } catch (error) {
-            alert('Failed to create block: ' + error.message);
+            this.showToast('Failed to create block: ' + error.message, 'error');
         } finally {
             this.setLoadingState(false);
         }
@@ -720,8 +841,9 @@ class PreviewCalendar {
             this.data = await updateBlock(blockId, data);
             this.closeBlockEditor();
             this.render();
+            this.showToast('Block saved');
         } catch (error) {
-            alert('Failed to save: ' + error.message);
+            this.showToast('Failed to save: ' + error.message, 'error');
         } finally {
             this.setLoadingState(false);
         }
@@ -739,8 +861,9 @@ class PreviewCalendar {
             this.data = await deleteBlock(this.selectedBlock.id);
             this.closeBlockEditor();
             this.render();
+            this.showToast('Block deleted');
         } catch (error) {
-            alert('Failed to delete: ' + error.message);
+            this.showToast('Failed to delete: ' + error.message, 'error');
         } finally {
             this.setLoadingState(false);
         }
@@ -752,7 +875,7 @@ class PreviewCalendar {
             this.data = await updateAssignmentSettings(assignmentId, settings);
             // Don't re-render to avoid losing scroll position - just update local data
         } catch (error) {
-            alert('Failed to update assignment: ' + error.message);
+            this.showToast('Failed to update assignment: ' + error.message, 'error');
             this.render(); // Re-render to reset checkbox state
         } finally {
             this.setLoadingState(false);
@@ -769,8 +892,9 @@ class PreviewCalendar {
             this.data = await regenerate();
             this.assignColors();
             this.render();
+            this.showToast('Plan reset to original');
         } catch (error) {
-            alert('Failed to regenerate: ' + error.message);
+            this.showToast('Failed to regenerate: ' + error.message, 'error');
         } finally {
             this.setLoadingState(false);
         }
@@ -784,7 +908,7 @@ class PreviewCalendar {
                 window.location.href = result.download_url;
             }
         } catch (error) {
-            alert('Failed to generate calendar: ' + error.message);
+            this.showToast('Failed to generate calendar: ' + error.message, 'error');
         } finally {
             this.setLoadingState(false);
         }

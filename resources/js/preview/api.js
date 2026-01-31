@@ -25,8 +25,8 @@ export async function fetchPreviewData() {
 }
 
 export async function updateBlock(blockId, data) {
-    const response = await fetch(`/plan/preview/block/${blockId}`, {
-        method: 'POST',
+    const response = await fetch(`/plan/preview/blocks/${blockId}`, {
+        method: 'PUT',
         headers,
         credentials: 'same-origin',
         body: JSON.stringify(data),
@@ -40,7 +40,7 @@ export async function updateBlock(blockId, data) {
 }
 
 export async function deleteBlock(blockId) {
-    const response = await fetch(`/plan/preview/block/${blockId}`, {
+    const response = await fetch(`/plan/preview/blocks/${blockId}`, {
         method: 'DELETE',
         headers,
         credentials: 'same-origin',
@@ -54,8 +54,8 @@ export async function deleteBlock(blockId) {
 }
 
 export async function updateAssignmentSettings(assignmentId, settings) {
-    const response = await fetch(`/plan/preview/assignment/${assignmentId}/settings`, {
-        method: 'POST',
+    const response = await fetch(`/plan/preview/assignments/${assignmentId}/settings`, {
+        method: 'PUT',
         headers,
         credentials: 'same-origin',
         body: JSON.stringify(settings),
@@ -69,7 +69,7 @@ export async function updateAssignmentSettings(assignmentId, settings) {
 }
 
 export async function createBlock(assignmentId, data) {
-    const response = await fetch(`/plan/preview/assignment/${assignmentId}/block`, {
+    const response = await fetch(`/plan/preview/assignments/${assignmentId}/blocks`, {
         method: 'POST',
         headers,
         credentials: 'same-origin',

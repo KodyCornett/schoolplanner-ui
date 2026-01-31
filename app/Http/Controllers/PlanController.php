@@ -564,7 +564,15 @@ class PlanController extends Controller
                 ->withErrors(['download' => 'No generated .ics found. Please Generate first.']);
         }
 
-        return Storage::download($icsRel, 'StudyPlan.ics', [
+        // Build filename with date range
+        $filename = 'Plan.ics';
+        if ($run->date_range) {
+            $start = \Carbon\Carbon::parse($run->date_range['start'])->format('Mj');
+            $end = \Carbon\Carbon::parse($run->date_range['end'])->format('Mj');
+            $filename = "Plan_{$start}-{$end}.ics";
+        }
+
+        return Storage::download($icsRel, $filename, [
             'Content-Type' => 'text/calendar; charset=utf-8',
         ]);
     }
