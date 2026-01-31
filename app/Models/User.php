@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Cashier\Billable;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use Billable, HasFactory, Notifiable;
 
     public function planRuns(): HasMany
     {
@@ -22,6 +23,22 @@ class User extends Authenticatable
     public function preference(): HasOne
     {
         return $this->hasOne(UserPreference::class);
+    }
+
+    /**
+     * Check if user has an active Pro subscription.
+     */
+    public function isPro(): bool
+    {
+        return $this->subscribed('pro');
+    }
+
+    /**
+     * Get the maximum planning horizon allowed for this user.
+     */
+    public function maxHorizon(): int
+    {
+        return $this->isPro() ? 30 : 14;
     }
 
     /**

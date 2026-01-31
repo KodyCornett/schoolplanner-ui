@@ -27,6 +27,7 @@
                         </a>
                     </div>
                     <div class="flex items-center space-x-4">
+                        <a href="{{ route('billing.pricing') }}" class="text-sm text-gray-600 hover:text-gray-900">Pricing</a>
                         <a href="{{ route('help') }}" class="text-sm text-gray-600 hover:text-gray-900">Help</a>
                         <a href="{{ route('login') }}" class="text-sm text-gray-600 hover:text-gray-900">Log in</a>
                         <a href="{{ route('register') }}" class="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Get Started</a>
@@ -184,6 +185,7 @@
                         <span class="font-semibold text-white">{{ config('app.name', 'SchoolPlanner') }}</span>
                     </div>
                     <div class="flex flex-wrap justify-center gap-6 text-sm">
+                        <a href="{{ route('billing.pricing') }}" class="hover:text-white transition">Pricing</a>
                         <a href="{{ route('help') }}" class="hover:text-white transition">Help</a>
                         <a href="{{ route('terms') }}" class="hover:text-white transition">Terms of Service</a>
                         <a href="{{ route('privacy') }}" class="hover:text-white transition">Privacy Policy</a>

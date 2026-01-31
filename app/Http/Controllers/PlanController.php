@@ -24,6 +24,8 @@ class PlanController extends Controller
 
         return view('plan.import', [
             'run' => $run,
+            'maxHorizon' => $user->maxHorizon(),
+            'isPro' => $user->isPro(),
         ]);
     }
 
@@ -65,8 +67,13 @@ class PlanController extends Controller
         }
 
         // 3) Settings (store normalized)
+        // Enforce horizon limit based on subscription
+        $maxHorizon = $user->maxHorizon();
+        $requestedHorizon = (int) ($request->input('horizon', $maxHorizon));
+        $horizon = min($requestedHorizon, $maxHorizon);
+
         $settings = [
-            'horizon' => (int) ($request->input('horizon', 30)),
+            'horizon' => $horizon,
             'soft_cap' => (int) ($request->input('soft_cap', 4)),
             'hard_cap' => (int) ($request->input('hard_cap', 5)),
             'skip_weekends' => (bool) ($request->boolean('skip_weekends')),

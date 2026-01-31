@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PlanController;
@@ -21,6 +22,7 @@ Route::get('/help', fn () => view('help.index'))->name('help');
 Route::get('/terms', [PageController::class, 'terms'])->name('terms');
 Route::get('/privacy', [PageController::class, 'privacy'])->name('privacy');
 Route::get('/contact', [PageController::class, 'contact'])->name('contact');
+Route::get('/pricing', [BillingController::class, 'pricing'])->name('billing.pricing');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
@@ -30,6 +32,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Billing routes
+    Route::post('/billing/checkout', [BillingController::class, 'checkout'])->name('billing.checkout');
+    Route::get('/billing/success', [BillingController::class, 'success'])->name('billing.success');
+    Route::get('/billing/portal', [BillingController::class, 'portal'])->name('billing.portal');
 });
 
 // Plan routes - require authentication
@@ -50,5 +57,8 @@ Route::prefix('plan')->name('plan.')->middleware('auth')->group(function () {
 
 // Canvas ICS serving endpoint - no auth (uses token validation)
 Route::get('/plan/canvas/{runId}', [PlanController::class, 'serveCanvasIcs'])->name('plan.canvas');
+
+// Stripe Webhook (CSRF excluded in bootstrap/app.php)
+Route::post('/stripe/webhook', [\Laravel\Cashier\Http\Controllers\WebhookController::class, 'handleWebhook'])->name('cashier.webhook');
 
 require __DIR__.'/auth.php';

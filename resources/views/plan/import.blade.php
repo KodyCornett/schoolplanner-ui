@@ -72,6 +72,37 @@
                    placeholder="https://canvas.instructure.com/feeds/calendars/...">
         </div>
 
+        {{-- Planning Horizon Section --}}
+        <div class="mb-8">
+            <div class="flex items-center justify-between mb-3">
+                <label for="horizon" class="text-sm font-medium text-gray-700">Planning Horizon</label>
+                @if(!$isPro)
+                    <a href="{{ route('billing.pricing') }}" class="text-xs text-blue-600 hover:text-blue-700">
+                        Upgrade for 30 days
+                    </a>
+                @endif
+            </div>
+            <div class="flex items-center gap-3">
+                <select name="horizon" id="horizon"
+                        class="block w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                    <option value="7" {{ old('horizon', $maxHorizon) == 7 ? 'selected' : '' }}>7 days</option>
+                    <option value="14" {{ old('horizon', $maxHorizon) == 14 ? 'selected' : '' }}>14 days</option>
+                    @if($isPro)
+                        <option value="21" {{ old('horizon', $maxHorizon) == 21 ? 'selected' : '' }}>21 days</option>
+                        <option value="30" {{ old('horizon', $maxHorizon) == 30 ? 'selected' : '' }}>30 days</option>
+                    @endif
+                </select>
+            </div>
+            <p class="mt-2 text-xs text-gray-500">
+                @if($isPro)
+                    Pro plan: Plan up to 30 days ahead
+                @else
+                    Free plan: Plan up to 14 days ahead.
+                    <a href="{{ route('billing.pricing') }}" class="text-blue-600 hover:underline">Upgrade to Pro</a> for 30-day planning.
+                @endif
+            </p>
+        </div>
+
         {{-- Busy Calendar Section --}}
         <div class="mb-8">
             <div class="flex items-center gap-2 mb-3">
