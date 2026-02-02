@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title>Page Not Found - {{ config('app.name', 'SchoolPlanner') }}</title>
+        <title>Page Not Found - {{ config('app.name', 'Modulus') }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -53,7 +53,7 @@
             <div class="mt-16 text-sm text-gray-400">
                 <a href="{{ route('home') }}" class="flex items-center space-x-2 hover:text-gray-600 transition">
                     <x-application-logo class="h-6 w-auto" />
-                    <span>{{ config('app.name', 'SchoolPlanner') }}</span>
+                    <span>{{ config('app.name', 'Modulus') }}</span>
                 </a>
             </div>
         </div>

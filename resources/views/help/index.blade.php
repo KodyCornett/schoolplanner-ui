@@ -20,7 +20,7 @@
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <meta name="csrf-token" content="{{ csrf_token() }}">
 
-            <title>Help - {{ config('app.name', 'SchoolPlanner') }}</title>
+            <title>Help - {{ config('app.name', 'Modulus') }}</title>
 
             <!-- Fonts -->
             <link rel="preconnect" href="https://fonts.bunny.net">
@@ -36,7 +36,7 @@
                         <div class="flex items-center">
                             <a href="/" class="flex items-center space-x-2">
                                 <x-application-logo class="block h-9 w-auto text-blue-600" />
-                                <span class="font-bold text-lg text-gray-800">{{ config('app.name', 'SchoolPlanner') }}</span>
+                                <span class="font-bold text-lg text-gray-800">{{ config('app.name', 'Modulus') }}</span>
                             </a>
                         </div>
                         <div class="flex items-center space-x-4">

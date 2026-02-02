@@ -16,7 +16,7 @@
                 </svg>
             </div>
             <h3 class="text-lg font-semibold text-gray-900 mb-2">Support</h3>
-            <p class="text-gray-600 mb-4">Need help using {{ config('app.name', 'SchoolPlanner') }}? Check out our help documentation first.</p>
+            <p class="text-gray-600 mb-4">Need help using {{ config('app.name', 'Modulus') }}? Check out our help documentation first.</p>
             <a href="{{ route('help') }}" class="text-blue-600 font-medium hover:text-blue-700">View Help Guide &rarr;</a>
         </div>
 
@@ -29,7 +29,7 @@
             </div>
             <h3 class="text-lg font-semibold text-gray-900 mb-2">Email</h3>
             <p class="text-gray-600 mb-4">For general inquiries, feedback, or issues not covered in the help guide.</p>
-            <a href="mailto:support@schoolplanner.app" class="text-green-600 font-medium hover:text-green-700">support@schoolplanner.app</a>
+            <a href="mailto:support@modulus.app" class="text-green-600 font-medium hover:text-green-700">support@modulus.app</a>
         </div>
     </div>
 
@@ -38,8 +38,8 @@
     <h3>How do I find my Canvas calendar URL?</h3>
     <p>In Canvas, go to <strong>Calendar</strong> &rarr; <strong>Calendar Feed</strong> (bottom of the page). Copy the URL that appears. For detailed instructions, see our <a href="{{ route('help') }}">Help Guide</a>.</p>
 
-    <h3>Can I use SchoolPlanner with other LMS platforms?</h3>
-    <p>Currently, {{ config('app.name', 'SchoolPlanner') }} is optimized for Canvas LMS. Support for other platforms may be added in the future based on user demand.</p>
+    <h3>Can I use Modulus with other LMS platforms?</h3>
+    <p>Currently, {{ config('app.name', 'Modulus') }} is optimized for Canvas LMS. Support for other platforms may be added in the future based on user demand.</p>
 
     <h3>Is my data secure?</h3>
     <p>Yes. We use HTTPS encryption, secure password hashing, and do not sell your data. See our <a href="{{ route('privacy') }}">Privacy Policy</a> for details.</p>
@@ -55,6 +55,6 @@
         <li>Your browser and device type</li>
         <li>Screenshots if possible</li>
     </ul>
-    <p>Send bug reports to <a href="mailto:support@schoolplanner.app">support@schoolplanner.app</a> with "Bug Report" in the subject line.</p>
+    <p>Send bug reports to <a href="mailto:support@modulus.app">support@modulus.app</a> with "Bug Report" in the subject line.</p>
 </div>
 @endsection

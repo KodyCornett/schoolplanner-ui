@@ -39,20 +39,24 @@ Route::middleware('auth')->group(function () {
     Route::get('/billing/portal', [BillingController::class, 'portal'])->name('billing.portal');
 });
 
-// Plan routes - require authentication
-Route::prefix('plan')->name('plan.')->middleware('auth')->group(function () {
+// Plan routes - require authentication and email verification
+Route::prefix('plan')->name('plan.')->middleware(['auth', 'verified'])->group(function () {
     Route::get('/import', [PlanController::class, 'showImport'])->name('import');
     Route::post('/import', [PlanController::class, 'handleImport'])->name('import.handle');
     Route::get('/generate', [PlanController::class, 'generate'])->name('generate');
     Route::get('/preview', [PlanController::class, 'preview'])->name('preview');
-    Route::get('/preview/data', [PlanController::class, 'previewData'])->name('preview.data');
-    Route::put('/preview/blocks/{blockId}', [PlanController::class, 'updateBlock'])->name('preview.blocks.update');
-    Route::delete('/preview/blocks/{blockId}', [PlanController::class, 'deleteBlock'])->name('preview.blocks.delete');
-    Route::post('/preview/assignments/{assignmentId}/blocks', [PlanController::class, 'createBlock'])->name('preview.blocks.create');
-    Route::put('/preview/assignments/{assignmentId}/settings', [PlanController::class, 'updateAssignmentSettings'])->name('preview.assignments.settings');
-    Route::post('/preview/regenerate', [PlanController::class, 'regenerate'])->name('preview.regenerate');
-    Route::post('/preview/finalize', [PlanController::class, 'finalizeCalendar'])->name('preview.finalize');
     Route::get('/download', [PlanController::class, 'download'])->name('download');
+
+    // Preview API routes - rate limited to prevent abuse
+    Route::middleware('throttle:60,1')->group(function () {
+        Route::get('/preview/data', [PlanController::class, 'previewData'])->name('preview.data');
+        Route::put('/preview/blocks/{blockId}', [PlanController::class, 'updateBlock'])->name('preview.blocks.update');
+        Route::delete('/preview/blocks/{blockId}', [PlanController::class, 'deleteBlock'])->name('preview.blocks.delete');
+        Route::post('/preview/assignments/{assignmentId}/blocks', [PlanController::class, 'createBlock'])->name('preview.blocks.create');
+        Route::put('/preview/assignments/{assignmentId}/settings', [PlanController::class, 'updateAssignmentSettings'])->name('preview.assignments.settings');
+        Route::post('/preview/regenerate', [PlanController::class, 'regenerate'])->name('preview.regenerate');
+        Route::post('/preview/finalize', [PlanController::class, 'finalizeCalendar'])->name('preview.finalize');
+    });
 });
 
 // Canvas ICS serving endpoint - no auth (uses token validation)

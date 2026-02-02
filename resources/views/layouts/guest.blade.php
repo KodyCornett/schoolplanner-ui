@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'SchoolPlanner') }}</title>
+        <title>{{ config('app.name', 'Modulus') }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -19,7 +19,7 @@
             <div class="text-center">
                 <a href="/" class="flex flex-col items-center">
                     <x-application-logo class="w-16 h-16 text-white" />
-                    <span class="mt-2 text-2xl font-bold text-white">{{ config('app.name', 'SchoolPlanner') }}</span>
+                    <span class="mt-2 text-2xl font-bold text-white">{{ config('app.name', 'Modulus') }}</span>
                     <span class="mt-1 text-sm text-blue-100">Plan your study schedule</span>
                 </a>
             </div>
@@ -30,7 +30,7 @@
 
             <div class="mt-4">
                 <a href="{{ route('help') }}" class="text-sm text-blue-100 hover:text-white transition">
-                    Need help? Learn how SchoolPlanner works
+                    Need help? Learn how Modulus works
                 </a>
             </div>
 

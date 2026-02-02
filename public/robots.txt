@@ -1,2 +1,8 @@
 User-agent: *
-Disallow:
+Disallow: /plan/
+Disallow: /profile/
+Disallow: /billing/
+Disallow: /dashboard
+Allow: /
+
+Sitemap: https://modulus.app/sitemap.xml

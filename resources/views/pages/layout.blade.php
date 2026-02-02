@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>@yield('title') - {{ config('app.name', 'SchoolPlanner') }}</title>
+        <title>@yield('title') - {{ config('app.name', 'Modulus') }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -22,7 +22,7 @@
                     <div class="flex items-center">
                         <a href="{{ route('home') }}" class="flex items-center space-x-2">
                             <x-application-logo class="block h-9 w-auto text-blue-600" />
-                            <span class="font-bold text-lg text-gray-800">{{ config('app.name', 'SchoolPlanner') }}</span>
+                            <span class="font-bold text-lg text-gray-800">{{ config('app.name', 'Modulus') }}</span>
                         </a>
                     </div>
                     <div class="flex items-center space-x-4">
@@ -53,7 +53,7 @@
             <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div class="text-sm text-gray-500">
-                        &copy; {{ date('Y') }} {{ config('app.name', 'SchoolPlanner') }}
+                        &copy; {{ date('Y') }} {{ config('app.name', 'Modulus') }}
                     </div>
                     <div class="flex flex-wrap justify-center gap-6 text-sm text-gray-500">
                         <a href="{{ route('home') }}" class="hover:text-gray-900 transition">Home</a>

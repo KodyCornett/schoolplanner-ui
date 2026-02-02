@@ -6,7 +6,21 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <meta name="description" content="Automatically generate study schedules from your Canvas calendar. Plan smarter, not harder.">
 
-        <title>{{ config('app.name', 'SchoolPlanner') }} - Automatic Study Scheduling</title>
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="{{ url('/') }}">
+        <meta property="og:title" content="{{ config('app.name', 'Modulus') }} - Automatic Study Scheduling">
+        <meta property="og:description" content="Import your Canvas calendar and let Modulus create an optimized study schedule. Spread your workload evenly, never miss a deadline.">
+        <meta property="og:image" content="{{ asset('images/og-image.png') }}">
+
+        <!-- Twitter -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:url" content="{{ url('/') }}">
+        <meta name="twitter:title" content="{{ config('app.name', 'Modulus') }} - Automatic Study Scheduling">
+        <meta name="twitter:description" content="Import your Canvas calendar and let Modulus create an optimized study schedule. Spread your workload evenly, never miss a deadline.">
+        <meta name="twitter:image" content="{{ asset('images/og-image.png') }}">
+
+        <title>{{ config('app.name', 'Modulus') }} - Automatic Study Scheduling</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -23,7 +37,7 @@
                     <div class="flex items-center">
                         <a href="/" class="flex items-center space-x-2">
                             <x-application-logo class="block h-9 w-auto text-blue-600" />
-                            <span class="font-bold text-xl text-gray-900">{{ config('app.name', 'SchoolPlanner') }}</span>
+                            <span class="font-bold text-xl text-gray-900">{{ config('app.name', 'Modulus') }}</span>
                         </a>
                     </div>
                     <div class="flex items-center space-x-4">
@@ -46,7 +60,7 @@
                         <span class="block text-blue-200">automatically</span>
                     </h1>
                     <p class="mt-6 text-lg sm:text-xl text-blue-100 max-w-2xl mx-auto">
-                        Import your Canvas calendar and let SchoolPlanner create an optimized study schedule. Spread your workload evenly, never miss a deadline.
+                        Import your Canvas calendar and let Modulus create an optimized study schedule. Spread your workload evenly, never miss a deadline.
                     </p>
                     <div class="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
                         <a href="{{ route('register') }}" class="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-blue-700 bg-white rounded-lg hover:bg-blue-50 transition shadow-lg">
@@ -124,8 +138,8 @@
         <section class="py-20">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-16">
-                    <h2 class="text-3xl font-bold text-gray-900">Why students love SchoolPlanner</h2>
-                    <p class="mt-4 text-lg text-gray-600">Built by students, for students</p>
+                    <h2 class="text-3xl font-bold text-gray-900">Why students love Modulus</h2>
+                    <p class="mt-4 text-lg text-gray-600">Built by a student, for students</p>
                 </div>
                 <div class="grid md:grid-cols-3 gap-8">
                     <!-- Feature 1 -->
@@ -182,7 +196,7 @@
                 <div class="flex flex-col md:flex-row justify-between items-center">
                     <div class="flex items-center space-x-2 mb-4 md:mb-0">
                         <x-application-logo class="h-8 w-auto text-white" />
-                        <span class="font-semibold text-white">{{ config('app.name', 'SchoolPlanner') }}</span>
+                        <span class="font-semibold text-white">{{ config('app.name', 'Modulus') }}</span>
                     </div>
                     <div class="flex flex-wrap justify-center gap-6 text-sm">
                         <a href="{{ route('billing.pricing') }}" class="hover:text-white transition">Pricing</a>
@@ -193,7 +207,7 @@
                     </div>
                 </div>
                 <div class="mt-8 pt-8 border-t border-gray-800 text-center text-sm">
-                    <p>&copy; {{ date('Y') }} {{ config('app.name', 'SchoolPlanner') }}. All rights reserved.</p>
+                    <p>&copy; {{ date('Y') }} {{ config('app.name', 'Modulus') }}. All rights reserved.</p>
                 </div>
             </div>
         </footer>

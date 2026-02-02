@@ -8,7 +8,7 @@
     <p class="text-gray-500">Last updated: {{ date('F j, Y') }}</p>
 
     <h2>1. Introduction</h2>
-    <p>{{ config('app.name', 'SchoolPlanner') }} ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our service.</p>
+    <p>{{ config('app.name', 'Modulus') }} ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our service.</p>
 
     <h2>2. Information We Collect</h2>
 

@@ -8,10 +8,10 @@
     <p class="text-gray-500">Last updated: {{ date('F j, Y') }}</p>
 
     <h2>1. Acceptance of Terms</h2>
-    <p>By accessing and using {{ config('app.name', 'SchoolPlanner') }} ("the Service"), you accept and agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the Service.</p>
+    <p>By accessing and using {{ config('app.name', 'Modulus') }} ("the Service"), you accept and agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the Service.</p>
 
     <h2>2. Description of Service</h2>
-    <p>{{ config('app.name', 'SchoolPlanner') }} is a study scheduling tool that helps students organize their academic workload by:</p>
+    <p>{{ config('app.name', 'Modulus') }} is a study scheduling tool that helps students organize their academic workload by:</p>
     <ul>
         <li>Importing calendar data from Canvas Learning Management System</li>
         <li>Generating optimized study schedules based on assignment deadlines</li>
@@ -40,7 +40,7 @@
     <p>Your use of the Service is also governed by our <a href="{{ route('privacy') }}">Privacy Policy</a>. By using the Service, you consent to the collection and use of information as described in that policy.</p>
 
     <h2>6. Intellectual Property</h2>
-    <p>The Service and its original content, features, and functionality are owned by {{ config('app.name', 'SchoolPlanner') }} and are protected by international copyright, trademark, and other intellectual property laws.</p>
+    <p>The Service and its original content, features, and functionality are owned by {{ config('app.name', 'Modulus') }} and are protected by international copyright, trademark, and other intellectual property laws.</p>
 
     <h2>7. Disclaimer of Warranties</h2>
     <p>The Service is provided "as is" and "as available" without warranties of any kind, either express or implied. We do not guarantee that:</p>
@@ -51,7 +51,7 @@
     </ul>
 
     <h2>8. Limitation of Liability</h2>
-    <p>In no event shall {{ config('app.name', 'SchoolPlanner') }}, its directors, employees, or agents be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service.</p>
+    <p>In no event shall {{ config('app.name', 'Modulus') }}, its directors, employees, or agents be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service.</p>
     <p><strong>Important:</strong> The Service generates study schedules as suggestions only. You are responsible for managing your academic deadlines and should always verify important dates with your institution.</p>
 
     <h2>9. Service Modifications</h2>

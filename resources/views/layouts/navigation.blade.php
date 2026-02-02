@@ -7,7 +7,7 @@
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}" class="flex items-center space-x-2">
                         <x-application-logo class="block h-9 w-auto text-blue-600" />
-                        <span class="font-bold text-lg text-gray-800">{{ config('app.name', 'SchoolPlanner') }}</span>
+                        <span class="font-bold text-lg text-gray-800">{{ config('app.name', 'Modulus') }}</span>
                     </a>
                 </div>
 

@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-The School Planner system automatically generates study schedules from academic calendar data. It consists of two major parts:
+Modulus automatically generates study schedules from academic calendar data. It consists of two major parts:
 
 1. **Kotlin Engine (SchoolCalendarSync / SchoolPlan)**
    - Parses Canvas `.ics` feeds and optional busy-time calendars
    - Applies scheduling constraints (daily caps, horizon, weights, priorities)
    - Outputs: `StudyPlan.ics` and `plan_events.json`
 
-2. **Laravel UI (schoolplanner-ui)** ← This repository
+2. **Laravel UI (Modulus)** ← This repository
    - Consumes engine output
    - Provides an **interactive preview** where users can review, adjust, lock, or exclude events
    - Final confirmation triggers `.ics` generation

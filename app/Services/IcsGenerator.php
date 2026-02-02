@@ -17,11 +17,11 @@ class IcsGenerator
         // Calendar header
         $lines[] = 'BEGIN:VCALENDAR';
         $lines[] = 'VERSION:2.0';
-        $lines[] = 'PRODID:-//SchoolPlanner UI//Interactive Preview//EN';
+        $lines[] = 'PRODID:-//Modulus//Interactive Preview//EN';
         $lines[] = 'CALSCALE:GREGORIAN';
         $lines[] = 'METHOD:PUBLISH';
         $lines[] = 'X-WR-CALNAME:Study Plan';
-        $lines[] = 'X-WR-CALDESC:Generated study plan from SchoolPlanner';
+        $lines[] = 'X-WR-CALDESC:Generated study plan from Modulus';
 
         // Build assignment lookup
         $assignments = [];
@@ -53,7 +53,7 @@ class IcsGenerator
         $lines[] = 'BEGIN:VEVENT';
 
         // UID - unique identifier
-        $uid = 'studyplan-'.$block['date'].'-'.$index.'@schoolplanner';
+        $uid = 'studyplan-'.$block['date'].'-'.$index.'@modulus';
         $lines[] = 'UID:'.$uid;
 
         // Timestamp

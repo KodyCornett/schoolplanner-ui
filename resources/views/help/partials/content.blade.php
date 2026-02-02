@@ -1,13 +1,13 @@
 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
     <div class="p-6 sm:p-8 text-gray-900">
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">SchoolPlanner Help</h1>
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Modulus Help</h1>
         <p class="text-gray-600 mb-8">Everything you need to know about creating and managing your study schedule.</p>
 
         <!-- Overview -->
         <section class="mb-8">
-            <h2 class="text-xl font-semibold text-gray-800 mb-3">What is SchoolPlanner?</h2>
+            <h2 class="text-xl font-semibold text-gray-800 mb-3">What is Modulus?</h2>
             <p class="text-gray-600 leading-relaxed">
-                SchoolPlanner automatically generates a personalized study schedule from your Canvas calendar.
+                Modulus automatically generates a personalized study schedule from your Canvas calendar.
                 It analyzes your upcoming assignments and deadlines, then creates optimized work blocks
                 that fit around your existing commitments. You can review and adjust the plan before
                 exporting it to your favorite calendar app.
@@ -52,7 +52,7 @@
                             <span class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-semibold">2</span>
                             <div>
                                 <h4 class="font-medium text-gray-800">Generate</h4>
-                                <p class="text-sm">SchoolPlanner analyzes your assignments and creates an optimized study schedule</p>
+                                <p class="text-sm">Modulus analyzes your assignments and creates an optimized study schedule</p>
                             </div>
                         </div>
                         <div class="flex items-start space-x-3">
@@ -84,7 +84,7 @@
                 </summary>
                 <div class="px-4 pb-4 text-gray-600">
                     <p class="mt-2">
-                        The number of days into the future to plan for. A 14-day horizon means SchoolPlanner
+                        The number of days into the future to plan for. A 14-day horizon means Modulus
                         will only schedule work blocks for assignments due within the next 2 weeks.
                     </p>
                     <p class="mt-2 text-sm">
@@ -100,7 +100,7 @@
                 </summary>
                 <div class="px-4 pb-4 text-gray-600">
                     <p class="mt-2">
-                        Your preferred daily study limit. SchoolPlanner tries to keep each day's work
+                        Your preferred daily study limit. Modulus tries to keep each day's work
                         blocks under this amount, but may exceed it if necessary to meet deadlines.
                     </p>
                     <p class="mt-2 text-sm">
@@ -115,7 +115,7 @@
                 </summary>
                 <div class="px-4 pb-4 text-gray-600">
                     <p class="mt-2">
-                        Your absolute maximum daily study limit. SchoolPlanner will never schedule
+                        Your absolute maximum daily study limit. Modulus will never schedule
                         more than this many hours on a single day, even if it means some work
                         cannot be scheduled.
                     </p>
@@ -131,7 +131,7 @@
                 </summary>
                 <div class="px-4 pb-4 text-gray-600">
                     <p class="mt-2">
-                        When enabled, SchoolPlanner will not schedule any work blocks on Saturdays or Sundays.
+                        When enabled, Modulus will not schedule any work blocks on Saturdays or Sundays.
                         Your assignments will be spread across weekdays only.
                     </p>
                 </div>
@@ -144,7 +144,7 @@
                 <div class="px-4 pb-4 text-gray-600">
                     <p class="mt-2">
                         If you have existing commitments (work, classes, activities), you can provide
-                        a second ICS calendar with your busy times. SchoolPlanner will avoid scheduling
+                        a second ICS calendar with your busy times. Modulus will avoid scheduling
                         study blocks during these periods.
                     </p>
                     <p class="mt-2 text-sm">
@@ -244,7 +244,7 @@
                 <div class="px-4 pb-4 text-gray-600">
                     <p class="mt-2">
                         Each assignment has a total estimated effort (in hours). When you delete or shorten a work block,
-                        SchoolPlanner redistributes that time to other non-anchored blocks for the same assignment.
+                        Modulus redistributes that time to other non-anchored blocks for the same assignment.
                         This ensures you still have enough time scheduled to complete the assignment.
                     </p>
                     <p class="mt-2">
@@ -341,7 +341,7 @@
                 </summary>
                 <div class="px-4 pb-4 text-gray-600">
                     <p class="mt-2">
-                        SchoolPlanner only imports assignments within your planning horizon. If you set a 14-day horizon,
+                        Modulus only imports assignments within your planning horizon. If you set a 14-day horizon,
                         assignments due more than 14 days from now won't appear. You can increase the horizon in your
                         import settings.
                     </p>
@@ -359,7 +359,7 @@
                 <div class="px-4 pb-4 text-gray-600">
                     <p class="mt-2">
                         Yes! You can create a new plan at any time with updated settings or preferences.
-                        However, changes you make in SchoolPlanner won't automatically sync to your external calendar -
+                        However, changes you make in Modulus won't automatically sync to your external calendar -
                         you'll need to re-export and re-import the ICS file.
                     </p>
                     <p class="mt-2 text-sm">
@@ -375,7 +375,7 @@
                 </summary>
                 <div class="px-4 pb-4 text-gray-600">
                     <p class="mt-2">
-                        SchoolPlanner uses assignment metadata and heuristics to estimate effort. You can adjust
+                        Modulus uses assignment metadata and heuristics to estimate effort. You can adjust
                         the total effort for any assignment in the preview by clicking on it and modifying the
                         effort hours. This will redistribute the work blocks accordingly.
                     </p>
@@ -406,7 +406,7 @@
                 </summary>
                 <div class="px-4 pb-4 text-gray-600">
                     <p class="mt-2">
-                        SchoolPlanner only reads the calendar data from your Canvas ICS feed - it cannot access
+                        Modulus only reads the calendar data from your Canvas ICS feed - it cannot access
                         your grades, submissions, or other Canvas content. Your ICS URL is stored securely and
                         only used to fetch calendar data when generating your study plan.
                     </p>
