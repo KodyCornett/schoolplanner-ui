@@ -25,7 +25,7 @@ Route::get('/contact', [PageController::class, 'contact'])->name('contact');
 Route::get('/pricing', [BillingController::class, 'pricing'])->name('billing.pricing');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth'])
     ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
@@ -39,8 +39,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/billing/portal', [BillingController::class, 'portal'])->name('billing.portal');
 });
 
-// Plan routes - require authentication and email verification
-Route::prefix('plan')->name('plan.')->middleware(['auth', 'verified'])->group(function () {
+// Plan routes - require authentication
+Route::prefix('plan')->name('plan.')->middleware(['auth'])->group(function () {
     Route::get('/import', [PlanController::class, 'showImport'])->name('import');
     Route::post('/import', [PlanController::class, 'handleImport'])->name('import.handle');
     Route::get('/generate', [PlanController::class, 'generate'])->name('generate');

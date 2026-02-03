@@ -21,6 +21,12 @@ class BillingController extends Controller
      */
     public function checkout(Request $request): RedirectResponse
     {
+        // Require email verification before upgrading to Pro
+        if (! $request->user()->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice')
+                ->with('message', 'Please verify your email to upgrade to Pro.');
+        }
+
         $priceId = config('services.stripe.pro_price_id');
 
         if (! $priceId) {
